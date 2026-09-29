@@ -86,3 +86,14 @@ test('Codespaces URLs accept only a GitHub repository, not arbitrary destination
   assert.equal(codespacesUrl('https://github.com/example/repo.git'), 'https://codespaces.new/example/repo?quickstart=1');
   for (const url of ['https://github.com.evil.test/a/b', 'https://github.com/a/b/tree/main', 'https://github.com/a/b?token=x']) assert.throws(() => githubRepo(url));
 });
+
+test('service ports and managed plugin ownership are validated', () => {
+  for (const fields of [
+    'port: 8082\nservices: {databaseAdmin: true}',
+    'services: {mail: {port: 8082}, databaseAdmin: true}',
+    'services: {redis: {port: 6379}}',
+    'services: {mail: {version: latest}}',
+    'services: {redis: true}\nplugins: [redis-cache]',
+  ]) assert.throws(() => parseConfig(`version: 1\n${fields}`));
+  assert.throws(() => blueprint(parseConfig('version: 1\nservices: {mail: true}')), /needs Docker/);
+});

@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile, realpath, stat, rm } from 'node:fs/promises
 import path from 'node:path';
 import { assetUrl, DEFAULT_PHP_OPTIONS } from './config.js';
 import { runtimeImages, assertRuntimeState, databaseConfig } from './runtime.js';
+import { mailPlugin, addServices, serviceSetup, toolLinks } from './services.js';
 
 export function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -83,7 +84,7 @@ export function setupScript(config, assets) {
       }
     }
   }
-  lines.push('echo "WordPress Lab is ready."', '');
+  lines.push(...serviceSetup(config), 'echo "WordPress Lab is ready."', '');
   return lines.join('\n');
 }
 
@@ -104,7 +105,9 @@ export function escapeCompose(value) {
 }
 
 export function composeConfig(config, { project, directory, credentials, mounts, url }) {
-  const volumes = ['wordpress:/var/www/html', ...mounts, { type: 'bind', source: path.join(directory, 'development.ini'), target: '/usr/local/etc/php/conf.d/zz-lab.ini', read_only: true }];
+  const volumes = ['wordpress:/var/www/html', ...mounts,
+    { type: 'bind', source: path.join(directory, 'development.ini'), target: '/usr/local/etc/php/conf.d/zz-lab.ini', read_only: true },
+    { type: 'bind', source: path.join(directory, 'lab-mail.php'), target: '/var/www/html/wp-content/mu-plugins/zz-wordpress-lab-mail.php', read_only: true }];
   const database = databaseConfig(config);
   const dbPrefix = database.engine === 'mysql' ? 'MYSQL' : 'MARIADB';
   const memory = (config.phpOptions ?? DEFAULT_PHP_OPTIONS).memoryLimit;
@@ -114,6 +117,7 @@ export function composeConfig(config, { project, directory, credentials, mounts,
     WORDPRESS_CONFIG_EXTRA: `define('WP_ENVIRONMENT_TYPE', 'local');\ndefine('WP_DEBUG_LOG', ${config.debug});\ndefine('WP_DEBUG_DISPLAY', false);\ndefine('AUTOMATIC_UPDATER_DISABLED', true);\ndefine('DISABLE_WP_CRON', ${config.cron !== 'traffic'});\ndefine('WP_MEMORY_LIMIT', '${memory}');\ndefine('WP_MAX_MEMORY_LIMIT', '${memory}');`,
   };
   const images = runtimeImages(config);
+  environment.WORDPRESS_CONFIG_EXTRA += `\ndefine('WP_REDIS_HOST', 'redis');\ndefine('WP_REDIS_CLIENT', 'predis');\ndefine('WP_REDIS_DISABLED', ${!config.services.redis.enabled});`;
   const result = {
     name: project,
     services: {
@@ -138,7 +142,8 @@ export function composeConfig(config, { project, directory, credentials, mounts,
         volumes: [...volumes, { type: 'bind', source: path.join(directory, 'setup.sh'), target: '/lab/setup.sh', read_only: true }],
       },
     },
-    volumes: { wordpress: {}, database: {} },
+    // Retain the inbox when capture is switched off; reset still owns its volume.
+    volumes: { wordpress: {}, database: {}, mail: {} },
   };
   if (config.cron === 'system') {
     const { profiles, ...cli } = result.services.cli;
@@ -146,7 +151,7 @@ export function composeConfig(config, { project, directory, credentials, mounts,
       command: ['while true; do if wp core is-installed >/dev/null 2>&1; then wp cron event run --due-now; fi; sleep 60; done'],
       depends_on: { wordpress: { condition: 'service_healthy' } } };
   }
-  return escapeCompose(result);
+  return escapeCompose(addServices(result, config, images));
 }
 
 export function labLocation(configFile) {
@@ -171,6 +176,7 @@ export async function startDocker(config, configFile) {
   assertRuntimeState(state, config, images);
   state ??= { credentials: { database: randomBytes(24).toString('hex'), root: randomBytes(24).toString('hex'), admin: randomBytes(12).toString('base64url') } };
   Object.assign(state, { wordpress: config.wordpress, php: config.php, database: databaseConfig(config), images });
+  state.tools = toolLinks(config, siteUrl);
   const root = path.dirname(configFile);
   const assets = [ ...config.plugins.map(item => ({ item, kind: 'plugin' })), { item: config.theme, kind: 'theme' } ];
   const mounts = [];
@@ -192,13 +198,24 @@ export async function startDocker(config, configFile) {
   await writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
   await writeFile(path.join(directory, 'setup.sh'), setupScript(config, assets), { mode: 0o644 });
   await writeFile(path.join(directory, 'development.ini'), phpIni(config), { mode: 0o644 });
+  await writeFile(path.join(directory, 'lab-mail.php'), mailPlugin(config.services.mail.enabled), { mode: 0o644 });
   await writeFile(path.join(directory, 'compose.json'), JSON.stringify(composeConfig(config, { ...location, credentials: state.credentials, mounts, url }), null, 2), { mode: 0o600 });
   console.log(`Starting ${config.name}: WordPress ${config.wordpress}, PHP ${config.php}, ${state.database.engine} ${state.database.version}.`);
-  compose(directory, ['up', '-d', '--quiet-pull', '--wait', '--wait-timeout', '240', '--remove-orphans', 'database', 'wordpress']);
+  compose(directory, ['up', '-d', '--quiet-pull', '--wait', '--wait-timeout', '240', '--remove-orphans', 'database', 'wordpress', ...Object.entries(config.services).filter(([, service]) => service.enabled).map(([key]) => key)]);
+  // Docker creates the parent of a nested file mount as root. Keep the shared
+  // mu-plugins directory writable, while the generated helper stays read-only.
+  compose(directory, ['exec', '-T', '--user', 'root', 'wordpress', 'chown', '33:33', '/var/www/html/wp-content/mu-plugins']);
   compose(directory, ['run', '--rm', '--quiet-pull', '--no-deps', '--entrypoint', 'sh', 'cli', '/lab/setup.sh']);
   if (config.cron === 'system') compose(directory, ['up', '-d', '--quiet-pull', 'cron']);
   console.log(`\nSite:  ${url}\nAdmin: ${url}/wp-admin/\nUser:  admin\nPassword: ${state.credentials.admin}\n\nStop: ./lab down   |   Fresh start: ./lab reset --yes\nUse the same --config/--repo options for lifecycle commands.`);
+  printTools(state);
   return { url, directory, credentials: state.credentials };
+}
+
+function printTools(state) {
+  if (state.tools?.databaseAdmin) console.log(`\nDatabase browser: ${state.tools.databaseAdmin}\nServer: database\nDatabase / user: wordpress\nDatabase password: ${state.credentials.database}`);
+  if (state.tools?.mail) console.log(`\nTest mail inbox: ${state.tools.mail}`);
+  if (!Object.keys(state.tools ?? {}).length) console.log('\nEnable services.databaseAdmin or services.mail in your recipe for browser tools.');
 }
 
 export async function controlDocker(configFile, action, args = []) {
@@ -211,5 +228,6 @@ export async function controlDocker(configFile, action, args = []) {
   }
   if (action === 'logs') compose(directory, ['logs', '--tail', '100', '-f']);
   if (action === 'status') compose(directory, ['ps']);
+  if (action === 'tools') printTools(JSON.parse(await readFile(path.join(directory, 'state.json'), 'utf8')));
   if (action === 'wp') compose(directory, ['run', '--rm', '--no-deps', 'cli', ...args]);
 }

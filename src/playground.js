@@ -11,8 +11,8 @@ function resource(item, kind, repository) {
 }
 
 export function blueprint(config, repository) {
-  if (config.database || config.phpOptions || config.cron === 'system' || Object.keys(config.images).length) {
-    throw new Error('This recipe needs Docker or Codespaces: Playground uses SQLite and cannot apply database images, PHP limits, or system cron. Remove those fields for a browser lab.');
+  if (config.database || config.phpOptions || config.cron === 'system' || Object.keys(config.images).length || Object.values(config.services).some(service => service.enabled)) {
+    throw new Error('This recipe needs Docker or Codespaces: Playground uses SQLite and cannot run database images, PHP limits, system cron, or companion services. Remove those fields for a browser lab.');
   }
   return {
     $schema: 'https://playground.wordpress.net/blueprint-schema.json',

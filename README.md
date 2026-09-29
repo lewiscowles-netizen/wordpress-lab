@@ -54,7 +54,7 @@ Only `version: 1` is required. Omitted settings use sensible defaults; an omitte
 - `site`: optional `title`, `description`, `language` (default `en_US`), IANA `timezone` (default `UTC`), and `permalink` (default empty/plain).
 - `plugins`: at most 30 plugin sources.
 - `theme`: one theme source; defaults to `twentytwentyfive`.
-- `images`: optional Docker image overrides for `wordpress`, `cli`, and `database`. Each reference must end in `@sha256:` followed by a full 64-character digest. Playground rejects image overrides because it cannot apply them.
+- `images`: optional Docker image overrides for `wordpress`, `cli`, `database`, `databaseAdmin`, `mail`, and `redis`. Each reference must end in `@sha256:` followed by a full 64-character digest. Playground rejects image overrides because it cannot apply them.
 
 Every lab enables development mode and search-engine discouragement. Debug logging is on by default. Docker logs go to `wp-content/debug.log` in the WordPress volume; PHP notices are not displayed to visitors.
 
@@ -86,6 +86,23 @@ Changing only PHP preserves the site's files, database, and credentials. Changin
 The default PHP limits are 256M memory, 64M upload and POST size, 120 seconds, and 3,000 input variables. Sizes use whole megabytes (`M`); POST size must be at least upload size. `cron: manual` disables traffic-triggered cron; run due events with `./lab wp -- cron event run --due-now`. `cron: system` runs the same command every minute while the lab is running.
 
 Playground supports PHP, debug, language, timezone, permalinks, and traffic/manual cron. It uses SQLite and cannot reproduce MySQL/MariaDB, custom PHP limits, or a system cron worker. Recipes requesting those features fail clearly in browser mode; use Docker or Codespaces.
+
+### Administrator tools and test mail
+
+```yaml
+services:
+  databaseAdmin: {enabled: true, port: 8082, version: "6.1.1"}
+  mail: {enabled: true, port: 8025, version: "1.31.3"}
+  redis: {enabled: true, version: "7.4.11"}
+```
+
+Each service also accepts `true` or `false` for its default settings. They are optional and off by default. `./lab up` and `./lab tools` print the enabled browser links. Ports must be distinct from each other and from WordPress; use different ports for concurrent labs.
+
+- **Adminer:** browse tables, run SQL, and import/export data. Select MySQL (also for MariaDB), server `database`, database/user `wordpress`, and the generated database password printed by the CLI.
+- **Mailpit:** capture WordPress `wp_mail()` messages in a local inbox. A lab mu-plugin configures PHPMailer for the internal SMTP server; this works in web requests and WP-CLI. It does not intercept plugins that call external email APIs directly or raw PHP `mail()`. Captured messages survive restart and disabling the service; reset removes them.
+- **Redis:** starts a cache server and installs/enables Redis Object Cache 3.0.0 with its bundled Predis client. Disabling the service bypasses the managed drop-in. The cache is disposable and not a data backup. Do not also declare `redis-cache` in the plugin list when the lab manages it.
+
+Only the two web UIs bind host ports, on loopback. SQL, SMTP, and Redis ports stay inside the lab network. Codespaces forwards the default UI ports privately; for custom ports, use its Ports panel. `./lab down` stops every service; it does not stop a codespace's billing.
 
 ### Maintaining runtime releases
 

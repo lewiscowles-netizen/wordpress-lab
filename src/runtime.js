@@ -24,6 +24,11 @@ export function runtimeImages(config) {
     throw new Error(`No pinned image for WordPress ${config.wordpress} / PHP ${config.php}. Add a verified images.wordpress digest to the recipe or src/runtime-images.json.`);
   }
   if (!images.database) throw new Error(`No pinned image for ${database.engine} ${database.version}. Choose a catalog release or add a verified images.database override.`);
+  for (const [key, service] of Object.entries(config.services)) {
+    if (!service.enabled) continue;
+    images[key] = config.images[key] ?? catalog.services[key]?.[service.version];
+    if (!images[key]) throw new Error(`No pinned image for services.${key} version ${service.version}. Choose a catalog release or provide an images.${key} override.`);
+  }
   for (const [key, value] of Object.entries(images)) validateImageReference(value, `images.${key}`);
   return images;
 }

@@ -22,6 +22,7 @@ const help = `WordPress Lab — one recipe, three ways to experiment
   ./lab down                          Stop this Docker lab; retain data
   ./lab reset --yes                   Delete this lab's data and start fresh
   ./lab status                        Show Docker containers
+  ./lab tools                         Show database browser and mail inbox links
   ./lab logs                          Follow Docker logs
   ./lab wp -- plugin list             Run WP-CLI in this Docker lab
 
@@ -55,7 +56,7 @@ async function main() {
   if (values.help) return console.log(help);
   const command = positionals[0] ?? 'up';
   if (positionals.length > 1) throw new Error('Unexpected arguments. WP-CLI arguments go after --.');
-  if (!['up', 'playground', 'codespaces', 'init', 'validate', 'blueprint', 'down', 'reset', 'status', 'logs', 'wp'].includes(command)) throw new Error(`Unknown command: ${command}. Run ./lab --help.`);
+  if (!['up', 'playground', 'codespaces', 'init', 'validate', 'blueprint', 'down', 'reset', 'status', 'tools', 'logs', 'wp'].includes(command)) throw new Error(`Unknown command: ${command}. Run ./lab --help.`);
   if (values.ref && !values.repo) throw new Error('--ref requires --repo.');
   if (command === 'reset' && !values.yes) throw new Error('Reset deletes this lab’s database and uploads. To continue, run ./lab reset --yes with the same recipe options.');
   if (command === 'codespaces') {
@@ -76,7 +77,7 @@ async function main() {
     if (!/^[\w][\w./-]*$/.test(ref)) throw new Error('Invalid Git reference.');
     const recipePath = relativePath(values.config ?? 'lab.yml', '--config');
     repository = { url, ref, directory: path.posix.dirname(recipePath) === '.' ? '' : path.posix.dirname(recipePath) };
-    if (['up', 'down', 'reset', 'status', 'logs', 'wp'].includes(command)) {
+    if (['up', 'down', 'reset', 'status', 'tools', 'logs', 'wp'].includes(command)) {
       const local = await checkout(url, ref, path.join(root, '.lab', 'checkouts', hash(`${url}:${ref}`)));
       configFile = await within(local, recipePath);
     } else {
@@ -91,7 +92,7 @@ async function main() {
     return console.log(`Created ${configFile}. Run ./lab up or ./lab playground --open.`);
   }
   // Lifecycle operations use the saved Compose file even if the recipe was edited.
-  if (['down', 'status', 'logs', 'wp'].includes(command)) {
+  if (['down', 'status', 'tools', 'logs', 'wp'].includes(command)) {
     if (command === 'wp' && !passthrough.length) throw new Error('Provide a WP-CLI command after --, for example ./lab wp -- plugin list.');
     return controlDocker(configFile, command, passthrough);
   }

@@ -1,0 +1,27 @@
+version: 1
+name: administrator-lab
+wordpress: "7.1.2"
+php: "8.4"
+database:
+  engine: mysql
+  version: "8.4.11"
+port: 8080
+phpOptions:
+  memoryLimit: "512M"
+  uploadMaxFilesize: "128M"
+  postMaxSize: "128M"
+  maxExecutionTime: 120
+  maxInputVars: 3000
+debug: true
+cron: system
+site:
+  title: Administrator Lab
+  timezone: Europe/London
+  permalink: /%postname%/
+services:
+  databaseAdmin: true
+  mail: true
+  redis: true
+plugins:
+  - slug: query-monitor
+    version: "4.0.7"

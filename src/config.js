@@ -1,5 +1,5 @@
 import { parseDocument } from 'yaml';
-import { DEFAULT_WORDPRESS, DEFAULT_PHP, DEFAULT_DATABASE, validateImageReference } from './runtime.js';
+import { DEFAULT_WORDPRESS, DEFAULT_PHP, DEFAULT_DATABASE, runtimeCatalog, validateImageReference } from './runtime.js';
 
 export const DEFAULT_RECIPE = `version: 1
 name: my-first-lab
@@ -46,6 +46,21 @@ function phpOptions(value) {
   if (parseInt(result.postMaxSize) < parseInt(result.uploadMaxFilesize)) throw new Error('phpOptions.postMaxSize must be at least uploadMaxFilesize.');
   integer(result.maxExecutionTime, 'phpOptions.maxExecutionTime', 1, 3600);
   integer(result.maxInputVars, 'phpOptions.maxInputVars', 100, 100000);
+  return result;
+}
+
+function services(value = {}) {
+  object(value, 'services', ['databaseAdmin', 'mail', 'redis']);
+  const result = {};
+  for (const [name, defaultPort] of Object.entries({ databaseAdmin: 8082, mail: 8025, redis: null })) {
+    const input = value[name] ?? false;
+    const item = typeof input === 'boolean' ? { enabled: input } : input;
+    object(item, `services.${name}`, defaultPort ? ['enabled', 'port', 'version'] : ['enabled', 'version']);
+    const enabled = item.enabled ?? true;
+    if (typeof enabled !== 'boolean') throw new Error(`services.${name}.enabled must be true or false.`);
+    result[name] = { enabled, version: string(item.version ?? runtimeCatalog.defaults.services[name], `services.${name}.version`, /^\d+\.\d+\.\d+$/),
+      ...(defaultPort ? { port: integer(item.port ?? defaultPort, `services.${name}.port`, 1024, 65535) } : {}) };
+  }
   return result;
 }
 
@@ -103,7 +118,7 @@ export function parseConfig(text) {
   if (document.errors.length) throw new Error(`Invalid YAML: ${document.errors[0].message}`);
   if (document.warnings.length) throw new Error(`Invalid YAML: ${document.warnings[0].message}`);
   const raw = document.toJS({ maxAliasCount: 0 });
-  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'phpOptions', 'database', 'debug', 'cron', 'port', 'site', 'plugins', 'theme', 'images']);
+  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'phpOptions', 'database', 'debug', 'cron', 'services', 'port', 'site', 'plugins', 'theme', 'images']);
   if (raw.version !== 1) throw new Error('recipe.version must be 1.');
   const name = string(raw.name ?? 'wordpress-lab', 'name', /^[a-z][a-z0-9-]{0,39}$/);
   if (raw.wordpress === 'latest') throw new Error('wordpress: latest is mutable. Choose a full release such as "7.1.2".');
@@ -119,10 +134,13 @@ export function parseConfig(text) {
   if (typeof debug !== 'boolean') throw new Error('debug must be true or false.');
   const cron = string(raw.cron ?? 'traffic', 'cron', /^(traffic|manual|system)$/);
   const images = raw.images ?? {};
-  object(images, 'images', ['wordpress', 'cli', 'database']);
+  object(images, 'images', ['wordpress', 'cli', 'database', 'databaseAdmin', 'mail', 'redis']);
   for (const [key, value] of Object.entries(images)) validateImageReference(value, `images.${key}`);
   const port = raw.port ?? 8080;
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('port must be an integer between 1024 and 65535.');
+  const configuredServices = services(raw.services);
+  const ports = [port, ...Object.values(configuredServices).filter(item => item.enabled && item.port).map(item => item.port)];
+  if (new Set(ports).size !== ports.length) throw new Error('WordPress, database browser, and mail inbox ports must be different.');
   const site = raw.site ?? {};
   object(site, 'site', ['title', 'description', 'language', 'timezone', 'permalink']);
   const title = string(site.title ?? 'My WordPress Lab', 'site.title');
@@ -136,7 +154,8 @@ export function parseConfig(text) {
   const plugins = (raw.plugins ?? []).map((item, index) => asset(item, `plugins[${index}]`));
   const names = plugins.map(item => item.name ?? item.slug ?? item.url);
   if (new Set(names).size !== names.length) throw new Error('Plugin names must be unique.');
-  return { version: 1, name, wordpress, php, database, phpOptions: raw.phpOptions === undefined ? undefined : phpOptions(raw.phpOptions), debug, cron, port, images, site: { title, description, language, timezone, permalink }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
+  if (configuredServices.redis.enabled && names.includes('redis-cache')) throw new Error('services.redis manages the redis-cache plugin. Remove it from plugins or disable that service.');
+  return { version: 1, name, wordpress, php, database, phpOptions: raw.phpOptions === undefined ? undefined : phpOptions(raw.phpOptions), debug, cron, services: configuredServices, port, images, site: { title, description, language, timezone, permalink }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
 }
 
 export function assetUrl(item, kind) {

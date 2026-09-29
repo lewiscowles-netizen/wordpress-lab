@@ -97,3 +97,14 @@ test('symlinks cannot mount files outside the recipe root', async () => {
     await assert.rejects(within(root, 'outside'), /escapes/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('companion services keep SQL, SMTP, and Redis internal and web tools on loopback', () => {
+  const config = parseConfig('version: 1\nservices: {databaseAdmin: true, mail: true, redis: true}');
+  const result = composeConfig(config, { project: 'test', directory: '/tmp/lab', credentials: { admin: 'a', database: 'b', root: 'c' }, mounts: [], url: 'http://localhost:8080' });
+  assert.deepEqual(result.services.databaseAdmin.ports, ['127.0.0.1:8082:8080']);
+  assert.deepEqual(result.services.mail.ports, ['127.0.0.1:8025:8025']);
+  assert.equal(result.services.redis.ports, undefined);
+  assert.equal(result.services.database.ports, undefined);
+  assert.match(result.services.wordpress.environment.WORDPRESS_CONFIG_EXTRA, /WP_REDIS_DISABLED', false/);
+  assert.ok(result.services.cli.volumes.some(v => v.target?.endsWith('zz-wordpress-lab-mail.php')));
+});

@@ -9,12 +9,22 @@
     "memory": "4gb"
   },
   "forwardPorts": [
-    8080
+    8080,
+    8082,
+    8025
   ],
   "portsAttributes": {
+    "8025": {
+      "label": "Test mail inbox",
+      "onAutoForward": "notify"
+    },
     "8080": {
       "label": "WordPress Lab",
       "onAutoForward": "openBrowser"
+    },
+    "8082": {
+      "label": "Database browser",
+      "onAutoForward": "notify"
     }
   },
   "postCreateCommand": "yarn install --frozen-lockfile",

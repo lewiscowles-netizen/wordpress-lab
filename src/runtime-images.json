@@ -6,6 +6,11 @@
     "database": {
       "mariadb": "11.4.13",
       "mysql": "8.4.11"
+    },
+    "services": {
+      "databaseAdmin": "6.1.1",
+      "mail": "1.31.3",
+      "redis": "7.4.11"
     }
   },
   "wordpress": {
@@ -31,6 +36,20 @@
     "mysql": {
       "8.4.11": "mysql:8.4.11@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d",
       "9.7.2": "mysql:9.7.2@sha256:30a0abfa7b502a496e12339b54cd07aaa70363396dc4b8e8a72a92804a505cd6"
+    }
+  },
+  "plugins": {
+    "redisCache": "3.0.0"
+  },
+  "services": {
+    "databaseAdmin": {
+      "6.1.1": "adminer:6.1.1@sha256:f2d8070d6416befaa50b9e5f8059dc181c7859b0ab4c0b081de945336e50a2ef"
+    },
+    "mail": {
+      "1.31.3": "axllent/mailpit:v1.31.3@sha256:ed9b00c609e77e99c79b93f1178255ebc271868920f2c69a8d166bd5634ed10d"
+    },
+    "redis": {
+      "7.4.11": "redis:7.4.11-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499"
     }
   }
 }
