@@ -2,6 +2,7 @@ import { DEFAULT_RECIPE, parseConfig, githubRepo, codespacesUrl } from '../src/c
 import { playgroundUrl } from '../src/playground.js';
 import { runtimeImages } from '../src/runtime.js';
 import { createSettings } from './settings.js';
+import { createPlugins } from './plugins.js';
 
 const $ = selector => document.querySelector(selector);
 const editor = $('#recipe');
@@ -15,6 +16,7 @@ const details = {
 };
 const runtime = () => $('input[name="runtime"]:checked').value;
 const settings = createSettings(editor, runtime, validate);
+const plugins = createPlugins(editor, validate);
 
 function validate() {
   const selected = runtime();
@@ -23,9 +25,11 @@ function validate() {
   $('#runtime-detail').textContent = detail;
   $('#launch').replaceChildren(document.createTextNode(`${button} ↗`));
   $('#credentials').hidden = selected !== 'playground';
+  plugins.invalid();
   try {
     const config = parseConfig(editor.value);
     settings.sync(config);
+    plugins.sync(config);
     if (selected === 'playground') playgroundUrl(config, repository);
     else runtimeImages(config);
     if (selected === 'codespaces') {

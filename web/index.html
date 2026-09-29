@@ -72,11 +72,57 @@
           </details>
         </div>
       </section>
+      <section class="stack-section" aria-labelledby="plugins-heading">
+        <div class="section-title"><h2 id="plugins-heading"><span>03</span> Bring your plugins</h2><p>From the directory to your own ideas.</p></div>
+        <div class="stack-card">
+          <ul id="plugin-list" class="plugin-list" aria-label="Recipe plugins"></ul>
+          <p id="plugin-empty" class="settings-note" hidden>No extra plugins yet. Add one below.</p>
+          <details id="plugin-editor" class="settings-details">
+            <summary id="plugin-editor-title">Add a plugin</summary>
+            <fieldset id="plugin-fields" class="plugin-fields"><legend class="sr-only">Plugin source</legend>
+              <div class="settings-grid plugin-grid">
+                <label>Plugin source<select id="plugin-source"><option value="directory">WordPress.org directory</option><option value="git">GitHub repository</option><option value="local">Local folder</option><option value="zip">ZIP release URL</option></select></label>
+              </div>
+              <div data-plugin-source="directory">
+                <label class="plugin-search-label" for="plugin-search">Search WordPress.org</label>
+                <div class="repo-control"><input id="plugin-search" placeholder="Search by name or purpose"><button type="button" id="search-plugins">Search</button></div>
+                <ul id="plugin-results" class="plugin-list" aria-label="Directory results"></ul>
+                <div class="settings-grid plugin-grid">
+                  <label>Plugin slug or directory URL<input id="plugin-slug" placeholder="query-monitor"></label>
+                  <label>Plugin version<input id="plugin-version" placeholder="4.0.7"></label>
+                </div>
+                <p class="settings-note">Choose a search result to fill in its current version, or enter a specific release. Saved recipes keep that version.</p>
+              </div>
+              <div data-plugin-source="git" hidden><div class="settings-grid plugin-grid">
+                <label>Plugin repository URL<input id="plugin-repo" inputmode="url" placeholder="https://github.com/owner/plugin"></label>
+                <label>Git tag, commit, or branch<input id="plugin-ref" placeholder="v1.2.3 or a full commit ID"></label>
+                <label>Plugin subdirectory<input id="plugin-subdirectory" placeholder=". (repository root)"></label>
+              </div><p class="settings-note">Use a release tag or commit for a repeatable recipe; branches can move. The repository must contain runnable plugin files. Builds and dependency installs do not run automatically.</p></div>
+              <div data-plugin-source="local" hidden><div class="settings-grid plugin-grid">
+                <label>Plugin folder path<input id="plugin-path" placeholder="plugins/my-plugin"></label>
+              </div><p class="settings-note">Relative to lab.yml. Docker and Codespaces mount the folder read-only in WordPress; edits in your source folder appear live. Browser labs need those files committed in a public recipe repository.</p></div>
+              <div data-plugin-source="zip" hidden><div class="settings-grid plugin-grid">
+                <label>Plugin ZIP URL<input id="plugin-url" inputmode="url" placeholder="https://example.com/releases/plugin-1.2.3.zip"></label>
+              </div></div>
+              <div class="settings-grid plugin-grid" id="plugin-folder-field" hidden><label>WordPress folder name<input id="plugin-name" placeholder="my-plugin"></label></div>
+              <label class="plugin-activate"><input id="plugin-activate" type="checkbox" checked> Activate on setup</label>
+              <div class="plugin-actions"><button type="button" class="secondary-button" id="save-plugin">Add to recipe</button><button type="button" class="text-button" id="cancel-plugin">Cancel</button></div>
+            </fieldset>
+          </details>
+          <details class="settings-details"><summary>Install Git plugins from inside WordPress</summary>
+            <p class="settings-note">Add Git Updater 14.4.2, then use Settings → Git Updater → Install Plugin in wp-admin. GitHub is built in; other hosts need its API add-ons. Authenticated requests may require a Git Updater license. Keep credentials out of shared recipes.</p>
+            <button type="button" class="secondary-button" id="add-git-updater">Add Git Updater</button>
+            <p class="settings-note">Use this for separate, editable installations. Recipe Git checkouts are read-only in Docker/Codespaces. Changes made in wp-admin are not written back to your YAML.</p>
+          </details>
+          <p id="plugin-status" class="settings-note" role="status" aria-live="polite"></p>
+          <p class="settings-note">Removing a plugin here changes the recipe. Existing labs keep installed plugins; “Activate on setup” does not deactivate plugins already running.</p>
+        </div>
+      </section>
       <section class="recipe-section" aria-labelledby="recipe-heading">
-        <div class="section-title"><h2 id="recipe-heading"><span>03</span> Keep your recipe</h2><button class="text-button" type="button" id="restore">Restore starter recipe ↺</button></div>
+        <div class="section-title"><h2 id="recipe-heading"><span>04</span> Keep your recipe</h2><button class="text-button" type="button" id="restore">Restore starter recipe ↺</button></div>
         <div class="recipe-grid">
           <div class="editor-wrap"><div class="editor-toolbar"><label for="recipe">lab.yml</label><label class="upload">Upload YAML<input id="upload" type="file" accept=".yaml,.yml,.txt" class="sr-only"></label></div><textarea id="recipe" spellcheck="false" aria-describedby="recipe-status" aria-label="YAML lab recipe"></textarea><div class="editor-footer"><span id="recipe-status" role="status">Checking recipe…</span><button type="button" class="text-button" id="download">↓ Download YAML</button></div></div>
-          <aside class="recipe-guide"><p class="eyebrow">SMALL FILE. FRESH START.</p><h3>Your lab,<br>in a few lines.</h3><p>The controls and YAML stay in sync. Add plugin or theme sources here, then save the recipe with your project. Change PHP without losing your local site's data.</p><label for="repository">Or bring a GitHub repository</label><div class="repo-control"><input id="repository" type="url" placeholder="https://github.com/you/your-lab"><button type="button" id="load-repo">Load</button></div><p class="hint">Loads <code>lab.yml</code> from the default branch of a public repo. Codespaces also needs this template’s dev container.</p><p id="repo-status" role="status"></p></aside>
+          <aside class="recipe-guide"><p class="eyebrow">SMALL FILE. FRESH START.</p><h3>Your lab,<br>in a few lines.</h3><p>The controls and YAML stay in sync. Add plugins above or edit theme sources here, then save the recipe with your project. Change PHP without losing your local site's data.</p><label for="repository">Or bring a GitHub repository</label><div class="repo-control"><input id="repository" type="url" placeholder="https://github.com/you/your-lab"><button type="button" id="load-repo">Load</button></div><p class="hint">Loads <code>lab.yml</code> from the default branch of a public repo. Codespaces also needs this template’s dev container.</p><p id="repo-status" role="status"></p></aside>
         </div>
       </section>
       <section class="launch-panel" aria-label="Launch your lab"><div><h2 id="launch-title">Your blank canvas is ready.</h2><p id="runtime-detail">Runs in your browser. No hosting bill. Save or export your work before leaving.</p><p class="credentials" id="credentials">Development login: <code>admin</code> / <code>password</code></p></div><button type="submit" class="launch-button" id="launch">Launch browser lab <span aria-hidden="true">↗</span></button></section>

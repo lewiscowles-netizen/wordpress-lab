@@ -219,6 +219,15 @@ yarn dev
 
 Open **http://localhost:4173**. Choose a workspace, select PHP and database releases independently, and enable the tools you need. Expand the site, PHP, and import panels for more settings. Controls and YAML update each other while preserving comments and unrelated plugin/theme sources. You can also paste/upload YAML or load a public GitHub repository. YAML and runtime compatibility validation happen in your browser. The launcher defaults to Docker so server settings are immediately available; Playground clearly disables server-only controls and offers to remove incompatible fields. Browser mode opens WordPress Playground; local mode downloads the recipe and shows the startup command; cloud mode opens GitHub's Codespaces creation flow.
 
+Use **Bring your plugins → Add a plugin** to:
+
+- Search the WordPress.org directory and choose a release, or paste a directory URL/slug and specify a version. Search results fill in their current version; the saved recipe keeps that explicit release. Existing unversioned YAML is still accepted and marked as unpinned.
+- Import a GitHub repository with an explicit tag, commit, or branch and optional subdirectory.
+- Point to a local plugin folder relative to `lab.yml`, or use a public built ZIP release.
+- Edit or remove an existing recipe entry, and choose whether to activate it during setup. Removal does not uninstall plugins from an existing lab.
+
+The optional **Install Git plugins from inside WordPress** panel adds Git Updater's pinned release to the recipe. No API credentials are stored by the launcher. Directory search goes directly to WordPress.org and requires network access; if unavailable, manual entry still works. Plugin controls validate duplicates and source fields before changing the recipe. YAML edits update the plugin list immediately; unsupported browser sources block launch with an explanation.
+
 For a ready server recipe with MySQL, PHP 8.4, Redis, mail, and a database browser, see [`examples/administrator.yml`](examples/administrator.yml).
 
 The CLI also creates shareable browser links and standard Blueprints without Docker:
@@ -294,6 +303,6 @@ yarn build
 yarn test:integration
 ```
 
-The integration checks use real Docker containers and temporary volumes. They also verify MySQL, independent PHP changes, PHP limits, Redis persistence, captured email, cron jobs, SQL restores, and WXR imports. They also verify HTTP/admin login, plugins, live source edits, restart persistence, clean reset without losing source files, and compatibility with the checked-in Playground Blueprint schema. Each test removes its own containers/volumes afterward. They require Docker and network access for runtime/plugin downloads; they do not create a paid cloud workspace. Set `WPLAB_LIVE_SCHEMA=1` to also require the current upstream schema endpoint, then review any differences before replacing the fixture.
+The integration checks use real Docker containers and temporary volumes. They also verify MySQL, independent PHP changes, PHP limits, Redis persistence, captured email, cron jobs, SQL restores, and WXR imports. They also verify HTTP/admin login, plugins, live source edits, restart persistence, clean reset without losing source files, and compatibility with the checked-in Playground Blueprint schema. Run `yarn test:integration:plugins` for the focused WordPress.org, GitHub checkout, local-folder, and Git Updater import check; it is also part of the full integration suite. Each test removes its own containers/volumes afterward. They require Docker and network access for runtime/plugin downloads; they do not create a paid cloud workspace. Set `WPLAB_LIVE_SCHEMA=1` to also require the current upstream schema endpoint, then review any differences before replacing the fixture.
 
 Implementation references: [WordPress Docker image](https://hub.docker.com/_/wordpress), [WP-CLI](https://developer.wordpress.org/cli/commands/), [Playground Blueprints](https://developer.wordpress.org/playground/blueprints/using-blueprints/), [Codespaces forwarding](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
