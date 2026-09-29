@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+set -eu
+LAB_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+command -v node >/dev/null 2>&1 || { echo 'WordPress Lab needs Node.js 22 or newer.' >&2; exit 1; }
+if [ ! -d "$LAB_ROOT/node_modules/yaml" ]; then
+  command -v yarn >/dev/null 2>&1 || { echo 'Install Yarn, then run this command again: corepack enable' >&2; exit 1; }
+  (cd "$LAB_ROOT" && yarn install --frozen-lockfile >&2)
+fi
+exec node "$LAB_ROOT/src/cli.js" "$@"

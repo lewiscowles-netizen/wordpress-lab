@@ -1,0 +1,9 @@
+version: 1
+name: repository-lab
+plugins:
+  - repo: https://github.com/WordPress/hello-dolly
+    ref: 5a6f8b3c1541c6328fa8424da571a6d44a80cdb6
+    name: hello-dolly
+# Public repositories work in both Docker and Playground.
+# This commit fixes the source revision for repeatable experiments.
+# Add subdirectory: path/to/plugin for a plugin inside a larger repository.

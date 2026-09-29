@@ -1,0 +1,31 @@
+{
+  "name": "WordPress Lab",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm@sha256:0d29e5fdc64f8397cd502223e0c4679f1e60877ca0fd2db4f2e2e0028e4271af",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb"
+  },
+  "forwardPorts": [
+    8080
+  ],
+  "portsAttributes": {
+    "8080": {
+      "label": "WordPress Lab",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "yarn install --frozen-lockfile",
+  "postStartCommand": "./lab up",
+  "waitFor": "postStartCommand",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "redhat.vscode-yaml",
+        "bmewburn.vscode-intelephense-client"
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+version: 1
+name: plugin-workbench
+php: "8.3"
+port: 8081
+site:
+  title: Plugin workbench
+plugins:
+  - slug: query-monitor
+    version: "4.0.7"
+  - path: plugins/lab-notes
+    name: lab-notes
+# Paths are relative to the recipe. Copy this file to the repository root:
+# cp examples/local-plugin.yml local.yml
+# ./lab up --config local.yml

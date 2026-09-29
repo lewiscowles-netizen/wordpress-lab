@@ -1,0 +1,520 @@
+:root {
+  font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:#213b34;
+  background:#f6f7f1;
+  font-synthesis:none;
+  font-size:15px;
+  line-height:1.6
+}
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0
+}
+button,input,textarea {
+  font:inherit
+}
+button,a,label {
+   -webkit-tap-highlight-color:transparent
+}
+button {
+  cursor:pointer
+}
+a {
+  color:inherit;
+  text-decoration:none
+}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,.runtime:has(input:focus-visible),.upload:has(input:focus-visible) {
+  outline:3px solid #b97b28;
+  outline-offset:4px
+}
+header,main,footer {
+  max-width:1140px;
+  margin:auto
+}
+header {
+  height:105px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border-bottom:1px solid #dbe0d5
+}
+.brand {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  font-weight:650;
+  font-size:19px;
+  letter-spacing:-.5px
+}
+.mark {
+  background:#214b3e;
+  color:#f5f7ed;
+  width:39px;
+  height:39px;
+  border-radius:10px;
+  font:italic 31px Georgia;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative
+}
+.mark span {
+  font:16px sans-serif;
+  position:absolute;
+  right:3px;
+  top:-3px
+}
+.header-note {
+  font-size:10px;
+  letter-spacing:1.7px;
+  color:#78827c
+}
+.intro {
+  padding:65px 0 44px
+}
+.eyebrow {
+  font-size:10px;
+  font-weight:650;
+  letter-spacing:1.8px;
+  margin:0 0 20px;
+  display:flex;
+  gap:9px;
+  align-items:center
+}
+.eyebrow>span {
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#779a61
+}
+h1 {
+  font-size:69px;
+  line-height:1.08;
+  font-weight:500;
+  letter-spacing:-3.8px;
+  margin:0 0 23px
+}
+h1 em {
+  font-family:Georgia,serif;
+  color:#507252;
+  font-weight:400;
+  letter-spacing:-3px
+}
+.lede {
+  color:#69746c;
+  font-size:16px;
+  line-height:1.8
+}
+.section-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:17px
+}
+.section-title h2 {
+  font-size:16px;
+  font-weight:650;
+  margin:0
+}
+.section-title h2 span {
+  font-size:11px;
+  color:#899489;
+  border:1px solid #d8dfd3;
+  border-radius:50%;
+  width:26px;
+  height:26px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-right:11px;
+  font-weight:400
+}
+.section-title>p {
+  font-size:12px;
+  color:#839083;
+  margin:0
+}
+.runtimes {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:17px;
+  padding:0;
+  border:0;
+  margin:0
+}
+.runtime {
+  cursor:pointer;
+  border:1px solid #d8dfd3;
+  border-radius:9px;
+  padding:23px 25px 0;
+  position:relative;
+  transition:background .15s,border-color .15s;
+  background:#fbfcf7
+}
+.runtime:has(input:checked) {
+  background:#eaf0e2;
+  border-color:#527253;
+  box-shadow:0 0 0 1px #527253
+}
+.runtime input {
+  position:absolute;
+  right:20px;
+  top:29px;
+  accent-color:#416545;
+  width:16px;
+  height:16px
+}
+.runtime-top {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:17px
+}
+.runtime-icon {
+  font-size:27px;
+  line-height:1
+}
+.pill {
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:1px;
+  padding:3px 7px;
+  background:#e6ebdf;
+  color:#64785f;
+  border-radius:3px
+}
+.runtime strong {
+  font-size:19px;
+  font-weight:600;
+  display:block;
+  margin-bottom:8px;
+  letter-spacing:-.4px
+}
+.runtime-description {
+  font-size:12px;
+  line-height:1.85;
+  color:#718071;
+  display:block;
+  padding-bottom:22px
+}
+.runtime-bottom {
+  border-top:1px solid #d9e1d3;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 0;
+  font-size:10px;
+  color:#60725d
+}
+.runtime-bottom>span {
+  font-size:17px
+}
+.recipe-section {
+  margin-top:40px
+}
+.text-button {
+  padding:0;
+  border:0;
+  background:none;
+  font-size:11px;
+  color:#6c8066
+}
+.recipe-grid {
+  display:grid;
+  grid-template-columns:1.35fr 1fr;
+  gap:52px
+}
+.editor-wrap {
+  border:1px solid #d8dfd3;
+  border-radius:8px;
+  background:#fff;
+  overflow:hidden
+}
+.editor-toolbar {
+  background:#edf0e7;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:12px 19px;
+  font:12px ui-monospace,SFMono-Regular,monospace;
+  border-bottom:1px solid #d8dfd3
+}
+.upload {
+  font:11px ui-sans-serif,sans-serif;
+  cursor:pointer
+}
+textarea {
+  display:block;
+  width:100%;
+  height:303px;
+  resize:vertical;
+  border:0;
+  padding:20px 23px;
+  font:12px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;
+  color:#456044;
+  background:#fcfdf9;
+  tab-size:2
+}
+textarea:focus-visible {
+  outline-offset:-4px
+}
+.editor-footer {
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  padding:11px 17px;
+  border-top:1px solid #e5e9df;
+  align-items:center;
+  font-size:10px;
+  color:#6e8067
+}
+#recipe-status[data-valid=false] {
+  color:#a04125
+}
+.recipe-guide {
+  padding:15px 0
+}
+.recipe-guide .eyebrow {
+  color:#87927e;
+  font-size:9px;
+  margin-bottom:13px
+}
+.recipe-guide h3 {
+  font-family:Georgia,serif;
+  font-weight:400;
+  font-size:34px;
+  line-height:1.18;
+  letter-spacing:-.7px;
+  margin:0 0 18px
+}
+.recipe-guide>p:not(.eyebrow) {
+  font-size:12px;
+  color:#7a8577;
+  line-height:1.8;
+  max-width:335px
+}
+.recipe-guide>label {
+  display:block;
+  font-size:11px;
+  font-weight:600;
+  margin:22px 0 8px
+}
+.repo-control {
+  display:flex;
+  gap:8px
+}
+.repo-control input {
+  width:100%;
+  min-width:0;
+  border:1px solid #d8dfd3;
+  background:#fcfdf9;
+  border-radius:5px;
+  padding:9px 11px;
+  font-size:11px
+}
+.repo-control button {
+  border:1px solid #cdd6c4;
+  border-radius:5px;
+  color:#476140;
+  padding:0 13px;
+  background:#eaf0e2;
+  font-size:11px
+}
+.recipe-guide>.hint {
+  font-size:10px!important;
+  margin-top:9px
+}
+.launch-panel {
+  background:#eaf0e2;
+  border:1px solid #d7e0ce;
+  border-radius:8px;
+  padding:24px 29px;
+  display:flex;
+  gap:30px;
+  align-items:center;
+  justify-content:space-between;
+  margin-top:32px
+}
+.launch-panel h2 {
+  font-size:17px;
+  font-weight:600;
+  margin:0 0 5px;
+  letter-spacing:-.2px
+}
+.launch-panel p {
+  font-size:11px;
+  color:#6c7d64;
+  margin:0
+}
+.launch-panel p.credentials {
+  font-size:10px;
+  margin-top:6px
+}
+.launch-button {
+  border:0;
+  background:#214b3e;
+  color:#fff;
+  border-radius:5px;
+  padding:14px 20px;
+  white-space:nowrap;
+  font-size:12px
+}
+.launch-button span {
+  margin-left:29px
+}
+.launch-button:hover {
+  background:#32604c
+}
+.launch-button:disabled {
+  opacity:.45;
+  cursor:not-allowed
+}
+.notes {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:40px;
+  margin:37px 0 50px
+}
+.notes p {
+  color:#889180;
+  font-size:10px;
+  line-height:1.9;
+  padding-left:23px;
+  position:relative
+}
+.notes strong {
+  color:#65735f;
+  font-weight:600
+}
+.notes p>span {
+  position:absolute;
+  left:0;
+  top:-3px;
+  font-size:18px;
+  color:#849673
+}
+footer {
+  border-top:1px solid #dbe0d5;
+  display:flex;
+  justify-content:space-between;
+  padding:24px 0 35px;
+  font-size:10px;
+  color:#8b9587
+}
+.footer-dot {
+  padding:0 10px;
+  color:#bdc6b4
+}
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0
+}
+#result {
+  background:#fff;
+  border:1px solid #d8dfd3;
+  border-radius:8px;
+  padding:20px;
+  margin-top:15px;
+  font-size:12px;
+  overflow-wrap:anywhere
+}
+#result pre {
+  overflow-x:auto;
+  padding:15px;
+  background:#f1f4eb
+}
+#result a {
+  text-decoration:underline;
+  color:#315c41
+}
+button:disabled {
+  cursor:wait;
+  opacity:.55
+}
+@media(min-width:1450px) {
+  .intro {
+    padding-top:75px
+  }
+}
+@media(max-width:1220px) {
+  header,main,footer {
+    margin-left:5%;
+    margin-right:5%
+  }
+}
+@media(max-width:760px) {
+  header {
+    height:80px
+  }
+  .header-note {
+    display:none
+  }
+  .intro {
+    padding-top:40px
+  }
+  h1 {
+    font-size:54px
+  }
+  .runtimes {
+    grid-template-columns:1fr
+  }
+  .runtime {
+    padding:20px 23px 0
+  }
+  .runtime-top {
+    margin-bottom:10px
+  }
+  .runtime-description {
+    padding-bottom:15px
+  }
+  .recipe-grid {
+    grid-template-columns:1fr;
+    gap:17px
+  }
+  .recipe-guide {
+    padding:10px 0
+  }
+  .recipe-guide h3 br {
+    display:none
+  }
+  .recipe-guide>p:not(.eyebrow) {
+    max-width:none
+  }
+  .section-title>p {
+    display:none
+  }
+  .launch-panel {
+    align-items:stretch;
+    flex-direction:column;
+    gap:20px;
+    padding:24px
+  }
+  .launch-button {
+    display:flex;
+    justify-content:space-between
+  }
+  .notes {
+    grid-template-columns:1fr;
+    gap:0;
+    margin-bottom:25px
+  }
+  footer {
+    gap:20px;
+    flex-direction:column
+  }
+  .lede {
+    font-size:14px
+  }
+  .section-title h2 {
+    font-size:14px
+  }
+}

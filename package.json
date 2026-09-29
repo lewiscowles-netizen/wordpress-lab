@@ -1,0 +1,19 @@
+{
+  "name": "wordpress-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "One YAML recipe. Disposable WordPress in Docker, Playground, or Codespaces.",
+  "engines": { "node": ">=22" },
+  "packageManager": "yarn@1.22.22",
+  "scripts": {
+    "lab": "node src/cli.js",
+    "start": "node src/cli.js up",
+    "dev": "node scripts/serve.js",
+    "build": "node scripts/build.js",
+    "test:unit": "node --test test/*.test.js",
+    "test:integration": "node scripts/smoke.js"
+  },
+  "dependencies": { "yaml": "2.9.1" },
+  "devDependencies": { "ajv": "8.17.1", "esbuild": "0.28.2" }
+}

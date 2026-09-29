@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#193d35">
+  <title>WordPress Lab — A little room for big ideas</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header><a class="brand" href="./"><span class="mark" aria-hidden="true">w<span>↗</span></span> WordPress Lab</a><span class="header-note">ONE RECIPE · THREE WORKSPACES</span></header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow"><span></span> YOUR NEXT IDEA STARTS HERE</p>
+      <h1>A little room<br>for <em>big ideas.</em></h1>
+      <p class="lede">A fresh WordPress, whenever inspiration strikes.<br>Pick your workspace. Bring a recipe. Make something.</p>
+    </section>
+    <form id="lab-form">
+      <section aria-labelledby="workspace-heading">
+        <div class="section-title"><h2 id="workspace-heading"><span>01</span> Choose your workspace</h2><p>Same recipe. Your kind of setup.</p></div>
+        <fieldset class="runtimes"><legend class="sr-only">Workspace</legend>
+          <label class="runtime"><input type="radio" name="runtime" value="playground" checked><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">◎</span><span class="pill">NO INSTALL</span></span><strong>In your browser</strong><span class="runtime-description">From idea to WordPress in a new tab.<br>Perfect for a quick experiment.</span><span class="runtime-bottom">WordPress Playground <span>↗</span></span></label>
+          <label class="runtime"><input type="radio" name="runtime" value="docker"><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">⌘</span><span class="pill">LOCAL</span></span><strong>On your machine</strong><span class="runtime-description">Real PHP, MariaDB, and your editor.<br>Room to get your hands dirty.</span><span class="runtime-bottom">Docker Compose <span>↗</span></span></label>
+          <label class="runtime"><input type="radio" name="runtime" value="codespaces"><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">☁</span><span class="pill">CLOUD</span></span><strong>In a codespace</strong><span class="runtime-description">Your repo and a ready-to-code lab.<br>Work from wherever you are.</span><span class="runtime-bottom">GitHub Codespaces <span>↗</span></span></label>
+        </fieldset>
+      </section>
+      <section class="recipe-section" aria-labelledby="recipe-heading">
+        <div class="section-title"><h2 id="recipe-heading"><span>02</span> Make it yours</h2><button class="text-button" type="button" id="restore">Restore starter recipe ↺</button></div>
+        <div class="recipe-grid">
+          <div class="editor-wrap"><div class="editor-toolbar"><label for="recipe">lab.yml</label><label class="upload">Upload YAML<input id="upload" type="file" accept=".yaml,.yml,.txt" class="sr-only"></label></div><textarea id="recipe" spellcheck="false" aria-describedby="recipe-status" aria-label="YAML lab recipe"></textarea><div class="editor-footer"><span id="recipe-status" role="status">Checking recipe…</span><button type="button" class="text-button" id="download">↓ Download YAML</button></div></div>
+          <aside class="recipe-guide"><p class="eyebrow">SMALL FILE. FRESH START.</p><h3>Your lab,<br>in a few lines.</h3><p>Choose a WordPress version. Add a plugin. Try a theme. Your recipe makes the experiment easy to repeat.</p><label for="repository">Or bring a GitHub repository</label><div class="repo-control"><input id="repository" type="url" placeholder="https://github.com/you/your-lab"><button type="button" id="load-repo">Load</button></div><p class="hint">Loads <code>lab.yml</code> from the default branch of a public repo. Codespaces also needs this template’s dev container.</p><p id="repo-status" role="status"></p></aside>
+        </div>
+      </section>
+      <section class="launch-panel" aria-label="Launch your lab"><div><h2 id="launch-title">Your blank canvas is ready.</h2><p id="runtime-detail">Runs in your browser. No hosting bill. Save or export your work before leaving.</p><p class="credentials" id="credentials">Development login: <code>admin</code> / <code>password</code></p></div><button type="submit" class="launch-button" id="launch">Launch browser lab <span aria-hidden="true">↗</span></button></section>
+      <div id="result" hidden role="status"></div>
+    </form>
+    <section class="notes" aria-label="How labs work"><p><span>↻</span><strong>Experiment freely.</strong> Start a new Playground or reset your Docker lab for a clean slate.</p><p><span>◇</span><strong>Keep what matters.</strong> Your recipe is portable. Export your work before you reset.</p><p><span>↗</span><strong>Share the starting point.</strong> Send a recipe or Playground link so someone else can try it.</p></section>
+  </main>
+  <footer><span>WordPress Lab <span class="footer-dot">/</span> Built for “what if?”</span><a href="https://developer.wordpress.org/playground/" target="_blank" rel="noreferrer">Powered by WordPress Playground ↗</a></footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

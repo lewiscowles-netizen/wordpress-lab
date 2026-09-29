@@ -1,0 +1,222 @@
+# WordPress Lab
+
+A disposable WordPress development environment described by one small YAML file. Try a plugin, build a theme, or share an experiment without provisioning a server.
+
+| Workspace | Start | Best for | Cost and storage |
+| --- | --- | --- | --- |
+| Browser | Click **Launch browser lab** in the launcher, or `./lab playground --open` | Fast experiments and shareable starting points | WordPress Playground; no hosting bill. Save/export through Playground to keep changes. |
+| Local | `./lab up --open` | Real MariaDB, local source files, and your editor | Uses your machine. Docker volumes persist until reset. |
+| Codespaces | Open a repository containing this template in GitHub Codespaces | A ready-to-code remote workspace | Subject to your GitHub allowance/billing. Stop/delete codespaces when finished. |
+
+## Start locally
+
+Install **Node.js 22+**, **Yarn**, and a running **Docker with Compose v2+**. Docker Desktop works on macOS and Windows; use WSL on Windows for the shell launcher. Linux works with Docker Engine and the Compose plugin.
+
+From this directory:
+
+```sh
+./lab up --open
+```
+
+The launcher installs its locked dependencies on first use, starts WordPress and MariaDB, installs the recipe's plugins/theme, and prints the site URL and generated administrator password. The first boot downloads container images; subsequent boots reuse them. WordPress is at **http://localhost:8080** by default.
+
+Commands from any directory are supported: use `/path/to/wordpress-lab/lab up --config /path/to/lab.yml`. Recipes are resolved relative to your current directory; source paths are relative to the recipe file. Alternatively use `node /path/to/wordpress-lab/src/cli.js` after installing dependencies.
+
+## A recipe
+
+```yaml
+version: 1
+name: my-first-lab
+wordpress: "7.1.2"
+php: "8.3"
+port: 8080
+site:
+  title: My WordPress Lab
+  description: A little room for big ideas.
+plugins:
+  - slug: query-monitor
+    version: "4.0.7"
+theme:
+  slug: twentytwentyfive
+  version: "1.5"
+```
+
+Only `version: 1` is required. Omitted settings use sensible defaults; an omitted plugin list installs no extra plugins. Unknown fields, duplicate YAML keys, unsafe paths, invalid source combinations, and unquoted numeric versions fail with a readable error.
+
+- `name`: a lowercase label, starting with a letter; up to 40 letters, numbers, or hyphens.
+- `wordpress`: a full quoted release such as `"7.1.2"` (the default). `latest` and partial versions are rejected. Docker requires a matching digest in the bundled image catalog or an explicit `images.wordpress` override. Playground must support the requested release.
+- `php`: quoted `"8.2"`, `"8.3"`, `"8.4"`, or `"8.5"`; defaults to `"8.3"`.
+- `port`: local port, from 1024 to 65535; defaults to 8080. Use a different port for each concurrent lab.
+- `site`: optional `title` and `description`.
+- `plugins`: at most 30 plugin sources.
+- `theme`: one theme source; defaults to `twentytwentyfive`.
+- `images`: optional Docker image overrides for `wordpress`, `cli`, and `database`. Each reference must end in `@sha256:` followed by a full 64-character digest. These overrides do not affect Playground.
+
+Every lab enables development mode, debug logging, and search-engine discouragement. Docker logs go to `wp-content/debug.log` in the WordPress volume; PHP notices are not displayed to visitors.
+
+### Immutable container artifacts
+
+Every generated Docker service uses a checked-in image digest from [`src/runtime-images.json`](src/runtime-images.json). The catalog currently covers WordPress 7.1.2 with PHP 8.2–8.5, WP-CLI 2.12.0, and MariaDB 11.4. Tags remain in the references as readable labels; Docker selects the content by its SHA-256 digest. Rebuilding or moving the upstream tag cannot change an existing pin. The catalog uses multi-platform index digests, selecting a fixed platform image for your architecture; different architectures naturally run different binaries.
+
+For example, the default WordPress image is:
+
+```text
+wordpress:7.1.2-php8.3-apache@sha256:bb209c8ab111746f22f578b870d866eb3f3da6028998a608202b706675450ecd
+```
+
+To adopt a new release, explicitly resolve its registry digest, review it, and commit the new catalog entry or recipe override. Docker Buildx can inspect an image without downloading its filesystem:
+
+```sh
+docker buildx imagetools inspect wordpress:7.1.2-php8.3-apache
+```
+
+Copy the top-level `Digest` from the inspected image (not a guessed hash). Example override for the existing default:
+
+```yaml
+wordpress: "7.1.2"
+php: "8.3"
+images:
+  wordpress: wordpress:7.1.2-php8.3-apache@sha256:bb209c8ab111746f22f578b870d866eb3f3da6028998a608202b706675450ecd
+```
+
+Startup never resolves moving tags. Unknown combinations fail with instructions to supply a pin. The lab records its image references; changes to any runtime digest require an explicit reset, including a rebuilt image carrying the same version label. Labs created before digest pinning also require reset before adopting this configuration. Export existing work first; reset deletes that lab's data. No existing lab is automatically reset.
+
+The boundary is **immutable container artifacts**, not a completely immutable experiment. Plugins/themes downloaded by version still use URLs without content-hash verification. Local sources and WordPress data remain editable. Hosted Playground does not accept our Docker pins and its runtime can change. The Codespaces base image is pinned, but dev-container features and their installation downloads are not fully locked. A fully reproducible environment would also need verified plugin/theme archives, fixed Git commits, and a pinned or self-hosted Playground runtime.
+
+### Plugin and theme sources
+
+Use a WordPress.org slug, optionally with a version and activation flag:
+
+```yaml
+plugins:
+  - query-monitor
+  - slug: hello-dolly
+    version: "1.7.2"
+    activate: false
+```
+
+Use a public GitHub repository, optionally selecting a subdirectory:
+
+```yaml
+plugins:
+  - repo: https://github.com/WordPress/hello-dolly
+    ref: 5a6f8b3c1541c6328fa8424da571a6d44a80cdb6
+    name: hello-dolly
+    # subdirectory: packages/my-plugin
+```
+
+`ref` defaults to `HEAD`. Branches, tags, and commit SHAs are accepted. `name` sets the WordPress folder. Repository contents must already be runnable PHP: the lab does not execute dependency installs or build scripts from downloaded repositories. Use a built ZIP for plugins that need a build.
+
+```yaml
+plugins:
+  - url: https://example.com/releases/my-plugin.zip
+```
+
+ZIP URLs must be public HTTPS downloads. Playground also needs the source server to permit cross-origin downloads. Do not put credentials in URLs or recipes.
+
+For live local development:
+
+```yaml
+plugins:
+  - path: plugins/lab-notes
+    name: lab-notes
+theme:
+  path: themes/my-theme
+  name: my-theme
+```
+
+Local directories are mounted read-only **inside Docker**; edit them normally with your host editor and refresh WordPress. Docker Desktop may take a moment to propagate edits. WordPress cannot overwrite your source files. Paths and symlinks must stay inside the recipe directory. Browser labs can use these paths when a public repository supplies the recipe; the browser uses committed files, not your uncommitted local edits.
+
+Try the included starter plugin:
+
+```sh
+cp examples/local-plugin.yml local.yml
+./lab up --config local.yml --open
+# Edit plugins/lab-notes/lab-notes.php, then refresh the dashboard.
+```
+
+## Browser launcher
+
+```sh
+yarn install --frozen-lockfile
+yarn dev
+```
+
+Open **http://localhost:4173**. Choose a workspace, paste/upload YAML or load a public GitHub repository, and launch. YAML validation happens in your browser. Browser mode opens WordPress Playground; local mode downloads the recipe and shows the startup command; cloud mode opens GitHub's Codespaces creation flow.
+
+The CLI also creates shareable browser links and standard Blueprints without Docker:
+
+```sh
+./lab playground --config lab.yml --open
+./lab blueprint --config lab.yml > blueprint.json
+```
+
+Playground uses its standard development login, **admin / password**, and automatically signs you in. Sharing a launch link shares the starting recipe, not subsequent changes in WordPress. Use Playground's save/export controls to preserve work.
+
+`yarn build` produces a self-contained **dist/index.html**. You can open that file directly or host it on any static server. No application server is needed. The optional **Publish browser launcher** GitHub Actions workflow is manually triggered after enabling Pages with GitHub Actions as its source. It publishes only the static launcher.
+
+## Start from a repository
+
+Put `lab.yml` and any plugin/theme sources in a GitHub repository:
+
+```sh
+./lab up --repo https://github.com/you/your-experiment
+./lab playground --repo https://github.com/you/your-experiment --open
+```
+
+Use `--ref main` or a commit SHA, and `--config examples/lab.yml` for a recipe inside a subdirectory. Docker checks out sources beneath `.lab/`; browser mode reads the public recipe and refers to repository files directly. CLI Git access uses your existing Git configuration; the browser workflow is designed for public repositories.
+
+Docker caches each repository/ref checkout. Use a new commit SHA to test a new revision, or stop the affected lab before removing its cached checkout. Reset rebuilds WordPress from that cached recipe; it does not update the recipe repository itself. Commit SHAs fix repository contents; branch names can resolve to different contents on a fresh checkout.
+
+## GitHub Codespaces
+
+Copy this entire project to the **root of its own GitHub repository**, including `.devcontainer/`, and commit your recipe and source files. Then choose **Code → Codespaces → Create codespace**. The dev container installs dependencies, starts Docker, and runs `./lab up` automatically on each workspace start.
+
+Generate a one-click creation link:
+
+```sh
+./lab codespaces --repo https://github.com/you/your-lab --open
+```
+
+Or put this badge in that repository's README, replacing `OWNER/REPO`:
+
+```md
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/OWNER/REPO?quickstart=1)
+```
+
+The lab derives its HTTPS site URL from Codespaces' forwarding environment. Port 8080 is forwarded automatically and remains private by default. If your recipe changes the port, change `.devcontainer/devcontainer.json` or forward that port manually. The cloud workflow uses the **committed** recipe; downloading YAML in the browser launcher does not change a repository.
+
+Stop a codespace when you finish using it; delete it after exporting anything you need to stop retaining its storage. `./lab down` stops WordPress, but does not stop or delete the codespace itself. Rebuilding/deleting the dev container may discard Docker volumes, so export first.
+
+## Lifecycle and troubleshooting
+
+```sh
+./lab validate                   # Check the recipe
+./lab status                     # Container status
+./lab wp -- plugin list           # WP-CLI
+./lab wp -- db export - > dump.sql
+./lab logs                       # Follow container logs; Ctrl-C exits
+./lab down                       # Stop/remove containers, preserve volumes
+./lab up                         # Resume with the same data and credentials
+./lab reset --yes                # Delete THIS recipe's data and start fresh
+```
+
+Always repeat the same `--config`, `--repo`, and `--ref` options for lifecycle commands. Lab storage is isolated by the absolute recipe path, not just its display name. Moving a recipe creates a different lab; stop the original first.
+
+`up` reapplies the site title/description and activates configured plugins/theme, but preserves posts, uploads, credentials, and installed plugin files. It doesn't remove plugins omitted from a changed recipe. `activate: false` means “do not activate on setup”; it doesn't deactivate an already active plugin. For a clean recipe, use `reset --yes`. Source files outside `.lab/` survive reset. Changing WordPress/PHP versions or any runtime image digest requires reset because core and database files persist in volumes; reset after changing a pinned plugin version too. Startup checks the core version against the recipe so a mislabeled image override cannot silently run another WordPress release.
+
+If startup fails, fix the reported configuration/network/plugin problem and run `up` again. Use `logs` for details. An occupied port can be changed in YAML. Docker must be running. If your global package-manager settings override the public registry, install dependencies with `npm_config_registry=https://registry.npmjs.org yarn install --registry https://registry.npmjs.org --frozen-lockfile`.
+
+This is a development lab. Docker binds HTTP to loopback and exposes no database port; administrator/database passwords are generated per lab and kept in ignored `.lab/` files. Run only trusted PHP/plugins/recipes. The browser uses SQLite through Playground, while Docker/Codespaces use MariaDB: database-specific SQL, native PHP extensions, cron, email delivery, and networking can behave differently. Use Docker when those details matter.
+
+## Development checks
+
+```sh
+yarn test:unit
+yarn build
+yarn test:integration
+```
+
+The integration check uses real Docker containers and temporary volumes. It verifies HTTP, admin login, plugin activation, live source edits, persistence across restart, clean reset without losing source files, and compatibility with Playground's current Blueprint schema. It removes its own containers/volumes afterward. It requires Docker and network access; it does not create a paid cloud workspace.
+
+Implementation references: [WordPress Docker image](https://hub.docker.com/_/wordpress), [WP-CLI](https://developer.wordpress.org/cli/commands/), [Playground Blueprints](https://developer.wordpress.org/playground/blueprints/using-blueprints/), [Codespaces forwarding](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).

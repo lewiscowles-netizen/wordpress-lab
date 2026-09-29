@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "defaults": {
+    "wordpress": "7.1.2",
+    "php": "8.3"
+  },
+  "wordpress": {
+    "7.1.2": {
+      "8.2": "wordpress:7.1.2-php8.2-apache@sha256:da4c3e7b0051b70835b0a188ecdd5bce5ebf6f83d1f3df41553f1a97d237fd19",
+      "8.3": "wordpress:7.1.2-php8.3-apache@sha256:bb209c8ab111746f22f578b870d866eb3f3da6028998a608202b706675450ecd",
+      "8.4": "wordpress:7.1.2-php8.4-apache@sha256:cd065854a456d9cbb76f3513a776faa0e6dfc4bb8c4283812c8459980afb4e88",
+      "8.5": "wordpress:7.1.2-php8.5-apache@sha256:02339b874e29ef1faf22bd819eac8ef088ab296daa60b132af6aba41b5ef3c14"
+    }
+  },
+  "cli": {
+    "8.2": "wordpress:cli-2.12.0-php8.2@sha256:aaa79b1239f24fccbb1634ec0a25c3e4fac6271bc9bf2334c40c3c8ef77bce89",
+    "8.3": "wordpress:cli-2.12.0-php8.3@sha256:c7e33020222e25da03375aa926741d24399f23df74dc11f99e45b373419f08ea",
+    "8.4": "wordpress:cli-2.12.0-php8.4@sha256:9c334ac196aedf314f8384f65333440447baf755941822864397602cef4601b9",
+    "8.5": "wordpress:cli-2.12.0-php8.5@sha256:3727f380ef4467176d3bb756010e57f3460107361e13663f34a18c95a2d35c8d"
+  },
+  "database": "mariadb:11.4@sha256:70cc072b29b4a89ae07abb2d4da2c64678a7f2dfe092751bb51c87d67dc1338b"
+}

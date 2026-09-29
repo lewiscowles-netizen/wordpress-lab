@@ -1,0 +1,15 @@
+# One recipe for Docker, WordPress Playground, and GitHub Codespaces.
+version: 1
+name: wordpress-lab
+wordpress: "7.1.2"
+php: "8.3"
+port: 8080
+site:
+  title: My WordPress Lab
+  description: A little room for big ideas.
+plugins:
+  - slug: query-monitor
+    version: "4.0.7"
+theme:
+  slug: twentytwentyfive
+  version: "1.5"
