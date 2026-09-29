@@ -202,7 +202,9 @@ yarn install --frozen-lockfile
 yarn dev
 ```
 
-Open **http://localhost:4173**. Choose a workspace, paste/upload YAML or load a public GitHub repository, and launch. YAML validation happens in your browser. Browser mode opens WordPress Playground; local mode downloads the recipe and shows the startup command; cloud mode opens GitHub's Codespaces creation flow.
+Open **http://localhost:4173**. Choose a workspace, select PHP and database releases independently, and enable the tools you need. Expand the site, PHP, and import panels for more settings. Controls and YAML update each other while preserving comments and unrelated plugin/theme sources. You can also paste/upload YAML or load a public GitHub repository. YAML and runtime compatibility validation happen in your browser. The launcher defaults to Docker so server settings are immediately available; Playground clearly disables server-only controls and offers to remove incompatible fields. Browser mode opens WordPress Playground; local mode downloads the recipe and shows the startup command; cloud mode opens GitHub's Codespaces creation flow.
+
+For a ready server recipe with MySQL, PHP 8.4, Redis, mail, and a database browser, see [`examples/administrator.yml`](examples/administrator.yml).
 
 The CLI also creates shareable browser links and standard Blueprints without Docker:
 

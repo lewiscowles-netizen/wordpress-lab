@@ -1,5 +1,7 @@
 import { DEFAULT_RECIPE, parseConfig, githubRepo, codespacesUrl } from '../src/config.js';
 import { playgroundUrl } from '../src/playground.js';
+import { runtimeImages } from '../src/runtime.js';
+import { createSettings } from './settings.js';
 
 const $ = selector => document.querySelector(selector);
 const editor = $('#recipe');
@@ -12,6 +14,7 @@ const details = {
   codespaces: ['A workspace wherever you are.', 'Starts from the recipe committed in your repo. GitHub usage charges may apply; stop/delete it when done.', 'Open Codespaces'],
 };
 const runtime = () => $('input[name="runtime"]:checked').value;
+const settings = createSettings(editor, runtime, validate);
 
 function validate() {
   const selected = runtime();
@@ -22,7 +25,13 @@ function validate() {
   $('#credentials').hidden = selected !== 'playground';
   try {
     const config = parseConfig(editor.value);
+    settings.sync(config);
     if (selected === 'playground') playgroundUrl(config, repository);
+    else runtimeImages(config);
+    if (selected === 'codespaces') {
+      if (!$('#repository').value.trim()) throw new Error('Enter the GitHub repository that will supply your Codespaces recipe.');
+      githubRepo($('#repository').value.trim());
+    }
     status.textContent = '● Recipe ready';
     status.dataset.valid = 'true';
     $('#launch').disabled = false;
@@ -77,6 +86,7 @@ $('#lab-form').addEventListener('submit', event => {
   event.preventDefault();
   try {
     const config = parseConfig(editor.value);
+    if (runtime() !== 'playground') runtimeImages(config);
     if (runtime() === 'docker') {
       download();
       return message('Save lab.yml in your copy of the WordPress Lab template, then run the command below. Local plugin paths are relative to the recipe. The terminal prints your generated admin password.', null, './lab up --config lab.yml --open');

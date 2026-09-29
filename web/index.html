@@ -19,16 +19,64 @@
       <section aria-labelledby="workspace-heading">
         <div class="section-title"><h2 id="workspace-heading"><span>01</span> Choose your workspace</h2><p>Same recipe. Your kind of setup.</p></div>
         <fieldset class="runtimes"><legend class="sr-only">Workspace</legend>
-          <label class="runtime"><input type="radio" name="runtime" value="playground" checked><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">◎</span><span class="pill">NO INSTALL</span></span><strong>In your browser</strong><span class="runtime-description">From idea to WordPress in a new tab.<br>Perfect for a quick experiment.</span><span class="runtime-bottom">WordPress Playground <span>↗</span></span></label>
-          <label class="runtime"><input type="radio" name="runtime" value="docker"><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">⌘</span><span class="pill">LOCAL</span></span><strong>On your machine</strong><span class="runtime-description">Real PHP, MariaDB, and your editor.<br>Room to get your hands dirty.</span><span class="runtime-bottom">Docker Compose <span>↗</span></span></label>
+          <label class="runtime"><input type="radio" name="runtime" value="playground"><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">◎</span><span class="pill">NO INSTALL</span></span><strong>In your browser</strong><span class="runtime-description">From idea to WordPress in a new tab.<br>Perfect for a quick experiment.</span><span class="runtime-bottom">WordPress Playground <span>↗</span></span></label>
+          <label class="runtime"><input type="radio" name="runtime" value="docker" checked><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">⌘</span><span class="pill">LOCAL</span></span><strong>On your machine</strong><span class="runtime-description">Your choice of PHP, MySQL or MariaDB.<br>Database, cache, and mail tools included.</span><span class="runtime-bottom">Docker Compose <span>↗</span></span></label>
           <label class="runtime"><input type="radio" name="runtime" value="codespaces"><span class="runtime-top"><span class="runtime-icon" aria-hidden="true">☁</span><span class="pill">CLOUD</span></span><strong>In a codespace</strong><span class="runtime-description">Your repo and a ready-to-code lab.<br>Work from wherever you are.</span><span class="runtime-bottom">GitHub Codespaces <span>↗</span></span></label>
         </fieldset>
       </section>
+      <section class="stack-section" aria-labelledby="stack-heading">
+        <div class="section-title"><h2 id="stack-heading"><span>02</span> Build your stack</h2><p>Choose independently. Save together.</p></div>
+        <div class="stack-card">
+          <div class="settings-grid">
+            <label>WordPress release<select id="wordpress-version" data-setting="wordpress"></select></label>
+            <label>PHP version<select id="php-version" data-setting="php"></select></label>
+            <label>Database engine<select id="database-engine"><option value="auto">Workspace default</option><option value="mariadb">MariaDB</option><option value="mysql">MySQL</option></select></label>
+            <label>Database release<select id="database-version"></select></label>
+          </div>
+          <p id="capability-note" class="settings-note" role="status"></p>
+          <button type="button" class="text-button" id="browser-compatible" hidden>Clear server-only settings for a browser lab</button>
+          <fieldset id="service-controls" class="service-controls"><legend>Administrator tools <span>Docker &amp; Codespaces</span></legend>
+            <label><input type="checkbox" id="database-admin"> <span><strong>Database browser</strong><small>Adminer for tables, queries, and exports.</small></span></label>
+            <label><input type="checkbox" id="mail-capture"> <span><strong>Test mail inbox</strong><small>Capture WordPress email with Mailpit.</small></span></label>
+            <label><input type="checkbox" id="redis-cache"> <span><strong>Redis object cache</strong><small>Try a persistent cache between requests.</small></span></label>
+          </fieldset>
+          <details class="settings-details"><summary>Site settings &amp; scheduled jobs</summary><div class="settings-grid">
+            <label>Site title<input data-setting="site.title" type="text"></label>
+            <label>Language code<input data-setting="site.language" type="text" placeholder="en_US"></label>
+            <label>Timezone<input data-setting="site.timezone" type="text" placeholder="Europe/London"></label>
+            <label>Permalink structure<input data-setting="site.permalink" type="text" placeholder="/%postname%/ (empty = plain)"></label>
+            <label>Cron mode<select data-setting="cron" id="cron-mode"><option value="traffic">On site visits</option><option value="manual">Manual (WP-CLI)</option><option value="system">Every minute (server)</option></select></label>
+            <label>Debug logging<select data-setting="debug" data-value-type="boolean"><option value="true">Enabled</option><option value="false">Disabled</option></select></label>
+          </div></details>
+          <details class="settings-details"><summary>PHP limits &amp; tool ports <span>Docker &amp; Codespaces</span></summary>
+            <fieldset id="server-settings" class="settings-grid"><legend class="sr-only">Server settings</legend>
+              <label>Memory limit<input data-setting="phpOptions.memoryLimit" placeholder="256M"></label>
+              <label>Max upload size<input data-setting="phpOptions.uploadMaxFilesize" placeholder="64M"></label>
+              <label>Max POST size<input data-setting="phpOptions.postMaxSize" placeholder="64M"></label>
+              <label>Execution time (seconds)<input data-setting="phpOptions.maxExecutionTime" type="number" min="1" max="3600"></label>
+              <label>Input variables<input data-setting="phpOptions.maxInputVars" type="number" min="100" max="100000"></label>
+              <label>WordPress port<input data-setting="port" type="number" min="1024" max="65535"></label>
+              <label>Database browser port<input data-service-port="databaseAdmin" type="number" min="1024" max="65535"></label>
+              <label>Mail inbox port<input data-service-port="mail" type="number" min="1024" max="65535"></label>
+            </fieldset>
+          </details>
+          <details class="settings-details"><summary>Start from an existing site</summary>
+            <p class="settings-note">Seed a fresh lab once. Paths are relative to your recipe; your source backup stays unchanged.</p>
+            <div class="settings-grid">
+              <label>Import format<select id="import-type"><option value="none">Clean installation</option><option value="wxr">WordPress XML export (WXR)</option><option value="sql">SQL backup + wp-content (server)</option></select></label>
+              <label>Import file or XML URL<input id="import-source" placeholder="backups/site.xml"></label>
+              <label class="sql-setting">Extracted wp-content folder<input id="import-content" placeholder="backups/wp-content (optional)"></label>
+              <label class="sql-setting">Database table prefix<input id="import-prefix" placeholder="wp_"></label>
+            </div>
+            <p id="import-note" class="settings-note"></p>
+          </details>
+        </div>
+      </section>
       <section class="recipe-section" aria-labelledby="recipe-heading">
-        <div class="section-title"><h2 id="recipe-heading"><span>02</span> Make it yours</h2><button class="text-button" type="button" id="restore">Restore starter recipe ↺</button></div>
+        <div class="section-title"><h2 id="recipe-heading"><span>03</span> Keep your recipe</h2><button class="text-button" type="button" id="restore">Restore starter recipe ↺</button></div>
         <div class="recipe-grid">
           <div class="editor-wrap"><div class="editor-toolbar"><label for="recipe">lab.yml</label><label class="upload">Upload YAML<input id="upload" type="file" accept=".yaml,.yml,.txt" class="sr-only"></label></div><textarea id="recipe" spellcheck="false" aria-describedby="recipe-status" aria-label="YAML lab recipe"></textarea><div class="editor-footer"><span id="recipe-status" role="status">Checking recipe…</span><button type="button" class="text-button" id="download">↓ Download YAML</button></div></div>
-          <aside class="recipe-guide"><p class="eyebrow">SMALL FILE. FRESH START.</p><h3>Your lab,<br>in a few lines.</h3><p>Choose a WordPress version. Add a plugin. Try a theme. Your recipe makes the experiment easy to repeat.</p><label for="repository">Or bring a GitHub repository</label><div class="repo-control"><input id="repository" type="url" placeholder="https://github.com/you/your-lab"><button type="button" id="load-repo">Load</button></div><p class="hint">Loads <code>lab.yml</code> from the default branch of a public repo. Codespaces also needs this template’s dev container.</p><p id="repo-status" role="status"></p></aside>
+          <aside class="recipe-guide"><p class="eyebrow">SMALL FILE. FRESH START.</p><h3>Your lab,<br>in a few lines.</h3><p>The controls and YAML stay in sync. Add plugin or theme sources here, then save the recipe with your project. Change PHP without losing your local site's data.</p><label for="repository">Or bring a GitHub repository</label><div class="repo-control"><input id="repository" type="url" placeholder="https://github.com/you/your-lab"><button type="button" id="load-repo">Load</button></div><p class="hint">Loads <code>lab.yml</code> from the default branch of a public repo. Codespaces also needs this template’s dev container.</p><p id="repo-status" role="status"></p></aside>
         </div>
       </section>
       <section class="launch-panel" aria-label="Launch your lab"><div><h2 id="launch-title">Your blank canvas is ready.</h2><p id="runtime-detail">Runs in your browser. No hosting bill. Save or export your work before leaving.</p><p class="credentials" id="credentials">Development login: <code>admin</code> / <code>password</code></p></div><button type="submit" class="launch-button" id="launch">Launch browser lab <span aria-hidden="true">↗</span></button></section>
@@ -36,7 +84,7 @@
     </form>
     <section class="notes" aria-label="How labs work"><p><span>↻</span><strong>Experiment freely.</strong> Start a new Playground or reset your Docker lab for a clean slate.</p><p><span>◇</span><strong>Keep what matters.</strong> Your recipe is portable. Export your work before you reset.</p><p><span>↗</span><strong>Share the starting point.</strong> Send a recipe or Playground link so someone else can try it.</p></section>
   </main>
-  <footer><span>WordPress Lab <span class="footer-dot">/</span> Built for “what if?”</span><a href="https://developer.wordpress.org/playground/" target="_blank" rel="noreferrer">Powered by WordPress Playground ↗</a></footer>
+  <footer><span>WordPress Lab <span class="footer-dot">/</span> Built for “what if?”</span><a href="https://developer.wordpress.org/" target="_blank" rel="noreferrer">WordPress documentation ↗</a></footer>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

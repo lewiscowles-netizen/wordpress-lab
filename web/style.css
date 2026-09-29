@@ -518,3 +518,27 @@ button:disabled {
     font-size:14px
   }
 }
+
+select { font: inherit; }
+select:focus-visible,summary:focus-visible { outline:3px solid #b97b28; outline-offset:4px; }
+.stack-section { margin-top:40px; }
+.stack-card { background:#fbfcf7; border:1px solid #d8dfd3; border-radius:9px; padding:24px; }
+.settings-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:18px; border:0; padding:0; margin:0; }
+.settings-grid label { display:flex; flex-direction:column; gap:7px; min-width:0; font-size:12px; font-weight:600; }
+.settings-grid input,.settings-grid select { width:100%; min-width:0; border:1px solid #ccd6c4; background:#fff; border-radius:5px; padding:10px; color:#213b34; font-weight:400; }
+.settings-grid input:disabled,.settings-grid select:disabled,fieldset:disabled { opacity:.65; }
+.settings-note { font-size:12px; color:#65755f; margin:14px 0 0; }
+.service-controls { border:0; padding:16px 0 0; margin:20px 0 0; display:grid; grid-template-columns:repeat(3,1fr); gap:15px; }
+.service-controls legend { font-size:12px; font-weight:600; }
+.service-controls legend span,.settings-details summary span { font-size:10px; font-weight:400; color:#76816f; margin-left:8px; }
+.service-controls label { display:flex; gap:9px; align-items:flex-start; font-size:12px; }
+.service-controls input { margin-top:5px; accent-color:#416545; }
+.service-controls small { display:block; font-size:11px; color:#76816f; margin-top:3px; }
+.settings-details { border-top:1px solid #dce3d6; margin-top:22px; padding-top:16px; }
+.settings-details summary { cursor:pointer; font-size:12px; font-weight:600; }
+.settings-details[open] summary { margin-bottom:18px; }
+.settings-details .settings-note { margin-bottom:16px; }
+#browser-compatible { margin-top:9px; text-decoration:underline; }
+[hidden] { display:none!important; }
+@media(max-width:900px) { .settings-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:560px) { .settings-grid,.service-controls { grid-template-columns:1fr; } .stack-card { padding:18px; } }
