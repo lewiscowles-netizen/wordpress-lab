@@ -21,6 +21,9 @@ function cli(args, success = true) {
   return result.stdout.trim();
 }
 const wp = (...args) => cli(['wp', '--config', configFile, '--', ...args]);
+// A PHP switch replaces the HTTP container; never reuse a socket from its
+// previous process while synchronous Docker commands block the Node event loop.
+const http = url => fetch(url, { headers: { Connection: 'close' }, signal: AbortSignal.timeout(15000) });
 const recipe = `version: 1
 name: stack-smoke
 port: ${port}
@@ -38,18 +41,19 @@ try {
   assert.equal(wp('eval', 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;'), '8.3');
   const probe = '<?php require __DIR__ . "/wp-load.php"; header("Content-Type: application/json"); echo json_encode(["memory" => ini_get("memory_limit"), "upload" => ini_get("upload_max_filesize"), "seconds" => ini_get("max_execution_time"), "php" => PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION]);';
   wp('eval', `file_put_contents('lab-runtime-check.php', base64_decode('${Buffer.from(probe).toString('base64')}'));`);
-  assert.deepEqual(await (await fetch(`http://localhost:${port}/lab-runtime-check.php`)).json(), {memory: '384M', upload: '32M', seconds: '45', php: '8.3'});
+  assert.deepEqual(await (await http(`http://localhost:${port}/lab-runtime-check.php`)).json(), {memory: '384M', upload: '32M', seconds: '45', php: '8.3'});
   assert.equal(wp('eval', 'echo ini_get("upload_max_filesize");'), '32M');
   assert.equal(wp('eval', 'echo (int) DISABLE_WP_CRON . ":" . (int) WP_DEBUG;'), '1:0');
   assert.equal(wp('option', 'get', 'timezone_string'), 'Europe/London');
   const id = wp('post', 'create', '--post_title=PHP upgrade survives', '--post_status=publish', '--porcelain');
   const url = wp('post', 'url', id);
   assert.match(url, /\/php-upgrade-survives\//);
-  assert.equal((await fetch(url)).status, 200);
+  assert.equal((await http(url)).status, 200);
   const before = JSON.parse(await readFile(path.join(directory, 'state.json')));
   await writeFile(configFile, recipe.replace('php: "8.3"', 'php: "8.4"'));
   cli(['up', '--config', configFile]);
   assert.equal(wp('eval', 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;'), '8.4');
+  assert.equal((await (await http(`http://localhost:${port}/lab-runtime-check.php`)).json()).php, '8.4');
   assert.equal(wp('post', 'get', id, '--field=post_title'), 'PHP upgrade survives');
   const after = JSON.parse(await readFile(path.join(directory, 'state.json')));
   assert.deepEqual(after.credentials, before.credentials);

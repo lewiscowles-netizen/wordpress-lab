@@ -63,12 +63,16 @@ try {
   assert.equal(wp('eval', "echo get_option('lab_smoke_marker', 'fresh');"), 'fresh');
   assert.match(await readFile(plugin, 'utf8'), /Live mount works/);
 
-  const schemaResponse = await fetch('https://playground.wordpress.net/blueprint-schema.json', { signal: AbortSignal.timeout(30000) });
-  assert.equal(schemaResponse.status, 200);
-  const validate = new Ajv({ strict: false, validateFormats: false }).compile(await schemaResponse.json());
+  let schema = JSON.parse(await readFile(path.join(root, 'test/fixtures/playground-blueprint-schema.json'), 'utf8'));
+  if (process.env.WPLAB_LIVE_SCHEMA === '1') {
+    const response = await fetch('https://playground.wordpress.net/blueprint-schema.json', { signal: AbortSignal.timeout(30000) });
+    assert.equal(response.status, 200, 'The optional live Playground schema check requires the upstream endpoint.');
+    schema = await response.json();
+  }
+  const validate = new Ajv({ strict: false, validateFormats: false }).compile(schema);
   const config = parseConfig(recipe);
   assert.ok(validate(blueprint(config, { url: 'https://github.com/example/repo', ref: 'HEAD', directory: '' })), JSON.stringify(validate.errors));
-  console.log('\nPASS: real WordPress HTTP/admin login, plugins, live edits, restart persistence, clean reset, source preservation, and current Playground schema.');
+  console.log('\nPASS: real WordPress HTTP/admin login, plugins, live edits, restart persistence, clean reset, source preservation, and Playground schema.');
 } finally {
   try { compose(directory, ['down', '--volumes', '--remove-orphans']); } catch { /* Reported by the original failure. */ }
   await rm(temporary, { recursive: true, force: true });
