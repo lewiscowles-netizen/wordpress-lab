@@ -64,6 +64,29 @@ function services(value = {}) {
   return result;
 }
 
+function importConfig(value) {
+  if (value === undefined) return undefined;
+  object(value, 'import', ['type', 'path', 'url', 'content', 'sourceUrl', 'tablePrefix']);
+  const type = string(value.type, 'import.type', /^(sql|wxr)$/);
+  if (Number(value.path !== undefined) + Number(value.url !== undefined) !== 1) throw new Error('import needs exactly one path or url.');
+  const result = { type };
+  if (value.path !== undefined) result.path = relativePath(value.path, 'import.path');
+  if (value.url !== undefined) result.url = httpsUrl(value.url, 'import.url').href;
+  if (type === 'sql') {
+    if (!result.path) throw new Error('SQL backups must use a local import.path.');
+    result.tablePrefix = string(value.tablePrefix ?? 'wp_', 'import.tablePrefix', /^[A-Za-z_][A-Za-z0-9_]{0,49}$/);
+    if (value.content !== undefined) result.content = relativePath(value.content, 'import.content');
+    if (value.sourceUrl !== undefined) {
+      string(value.sourceUrl, 'import.sourceUrl');
+      let url;
+      try { url = new URL(value.sourceUrl); } catch { throw new Error('import.sourceUrl must be an HTTP(S) site URL.'); }
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.hash || url.search) throw new Error('import.sourceUrl must be an HTTP(S) site URL without credentials, query, or fragment.');
+      result.sourceUrl = url.href.replace(/\/$/, '');
+    }
+  } else if (['content', 'tablePrefix', 'sourceUrl'].some(key => value[key] !== undefined)) throw new Error('content, tablePrefix and sourceUrl apply only to SQL imports.');
+  return result;
+}
+
 export function httpsUrl(value, label = 'URL') {
   string(value, label);
   let url;
@@ -118,7 +141,7 @@ export function parseConfig(text) {
   if (document.errors.length) throw new Error(`Invalid YAML: ${document.errors[0].message}`);
   if (document.warnings.length) throw new Error(`Invalid YAML: ${document.warnings[0].message}`);
   const raw = document.toJS({ maxAliasCount: 0 });
-  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'phpOptions', 'database', 'debug', 'cron', 'services', 'port', 'site', 'plugins', 'theme', 'images']);
+  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'phpOptions', 'database', 'debug', 'cron', 'services', 'import', 'port', 'site', 'plugins', 'theme', 'images']);
   if (raw.version !== 1) throw new Error('recipe.version must be 1.');
   const name = string(raw.name ?? 'wordpress-lab', 'name', /^[a-z][a-z0-9-]{0,39}$/);
   if (raw.wordpress === 'latest') throw new Error('wordpress: latest is mutable. Choose a full release such as "7.1.2".');
@@ -155,7 +178,8 @@ export function parseConfig(text) {
   const names = plugins.map(item => item.name ?? item.slug ?? item.url);
   if (new Set(names).size !== names.length) throw new Error('Plugin names must be unique.');
   if (configuredServices.redis.enabled && names.includes('redis-cache')) throw new Error('services.redis manages the redis-cache plugin. Remove it from plugins or disable that service.');
-  return { version: 1, name, wordpress, php, database, phpOptions: raw.phpOptions === undefined ? undefined : phpOptions(raw.phpOptions), debug, cron, services: configuredServices, port, images, site: { title, description, language, timezone, permalink }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
+  const seed = importConfig(raw.import);
+  return { version: 1, name, wordpress, php, database, phpOptions: raw.phpOptions === undefined ? undefined : phpOptions(raw.phpOptions), debug, cron, services: configuredServices, import: seed, importedTheme: seed?.type === 'sql' && raw.theme === undefined, siteFields: Object.keys(site), port, images, site: { title, description, language, timezone, permalink }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
 }
 
 export function assetUrl(item, kind) {

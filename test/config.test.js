@@ -97,3 +97,23 @@ test('service ports and managed plugin ownership are validated', () => {
   ]) assert.throws(() => parseConfig(`version: 1\n${fields}`));
   assert.throws(() => blueprint(parseConfig('version: 1\nservices: {mail: true}')), /needs Docker/);
 });
+
+test('import formats, paths, and browser capabilities are explicit', () => {
+  for (const value of [
+    '{type: zip, path: backup.zip}',
+    '{type: sql, url: https://example.com/site.sql}',
+    '{type: sql, path: ../site.sql}',
+    '{type: wxr, path: site.xml, content: wp-content}',
+    '{type: wxr, path: site.xml, url: https://example.com/site.xml}',
+    '{type: sql, path: site.sql, tablePrefix: "wp_;DROP"}',
+  ]) assert.throws(() => parseConfig(`version: 1\nimport: ${value}`));
+  const sql = parseConfig('version: 1\nimport: {type: sql, path: backup.sql}');
+  assert.equal(sql.importedTheme, true);
+  assert.equal(sql.import.tablePrefix, 'wp_');
+  assert.throws(() => blueprint(sql), /needs Docker/);
+  const wxr = parseConfig('version: 1\nimport: {type: wxr, url: https://example.com/export.xml}');
+  assert.equal(blueprint(wxr).steps.at(-2).file.url, 'https://example.com/export.xml');
+  const local = parseConfig('version: 1\nimport: {type: wxr, path: exports/site.xml}');
+  assert.throws(() => blueprint(local), /public HTTPS URL/);
+  assert.equal(blueprint(local, {url: 'https://github.com/example/site', ref: 'main', directory: 'demo'}).steps.at(-2).file.url, 'https://raw.githubusercontent.com/example/site/main/demo/exports/site.xml');
+});

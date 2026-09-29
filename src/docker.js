@@ -5,6 +5,7 @@ import path from 'node:path';
 import { assetUrl, DEFAULT_PHP_OPTIONS } from './config.js';
 import { runtimeImages, assertRuntimeState, databaseConfig } from './runtime.js';
 import { mailPlugin, addServices, serviceSetup, toolLinks } from './services.js';
+import { assertImportState, importMounts, importSteps } from './imports.js';
 
 export function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -51,22 +52,25 @@ export async function checkout(repo, ref, target) {
 }
 
 export function setupScript(config, assets) {
+  const seed = importSteps(config, quote);
+  const override = key => config.import?.type !== 'sql' || config.siteFields.includes(key);
   const lines = [
     '#!/bin/sh', 'set -eu',
     'wp() { command wp --skip-plugins --skip-themes "$@"; }',
     `[ "$(wp core version)" = ${quote(config.wordpress)} ] || { echo 'WordPress files do not match the requested version. Export your work and reset this lab.' >&2; exit 1; }`,
     `[ "$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" = ${quote(config.php)} ] || { echo 'PHP does not match the recipe.' >&2; exit 1; }`,
+    ...seed.before,
     'if ! wp core is-installed >/dev/null 2>&1; then',
     `  wp core install --url="$LAB_URL" --title=${quote(config.site.title)} --admin_user=admin --admin_password="$LAB_ADMIN_PASSWORD" --admin_email=admin@example.test --skip-email`,
     'fi',
     'wp option update home "$LAB_URL"', 'wp option update siteurl "$LAB_URL"',
-    `wp option update blogname ${quote(config.site.title)}`,
-    `wp option update blogdescription ${quote(config.site.description)}`,
+    ...(override('title') ? [`wp option update blogname ${quote(config.site.title)}`] : []),
+    ...(override('description') ? [`wp option update blogdescription ${quote(config.site.description)}`] : []),
     'wp option update blog_public 0',
-    `wp option update timezone_string ${quote(config.site.timezone)}`,
-    ...(config.site.language !== 'en_US' ? [`wp language core install ${quote(config.site.language)}`] : []),
-    `wp site switch-language ${quote(config.site.language)}`,
-    `wp rewrite structure ${quote(config.site.permalink)} --hard`,
+    ...(override('timezone') ? [`wp option update timezone_string ${quote(config.site.timezone)}`] : []),
+    ...(override('language') && config.site.language !== 'en_US' ? [`wp language core install ${quote(config.site.language)}`] : []),
+    ...(override('language') ? [`wp site switch-language ${quote(config.site.language)}`] : []),
+    ...(override('permalink') ? [`wp rewrite structure ${quote(config.site.permalink)} --hard`] : ['wp rewrite flush --hard']),
   ];
   for (const { item, kind, mounted } of assets) {
     const name = item.name ?? item.slug;
@@ -84,7 +88,7 @@ export function setupScript(config, assets) {
       }
     }
   }
-  lines.push(...serviceSetup(config), 'echo "WordPress Lab is ready."', '');
+  lines.push(...seed.after, ...serviceSetup(config), 'echo "WordPress Lab is ready."', '');
   return lines.join('\n');
 }
 
@@ -113,6 +117,7 @@ export function composeConfig(config, { project, directory, credentials, mounts,
   const memory = (config.phpOptions ?? DEFAULT_PHP_OPTIONS).memoryLimit;
   const environment = {
     WORDPRESS_DB_HOST: 'database', WORDPRESS_DB_NAME: 'wordpress', WORDPRESS_DB_USER: 'wordpress', WORDPRESS_DB_PASSWORD: credentials.database,
+    WORDPRESS_TABLE_PREFIX: config.import?.tablePrefix ?? 'wp_',
     WORDPRESS_DEBUG: config.debug ? '1' : '0',
     WORDPRESS_CONFIG_EXTRA: `define('WP_ENVIRONMENT_TYPE', 'local');\ndefine('WP_DEBUG_LOG', ${config.debug});\ndefine('WP_DEBUG_DISPLAY', false);\ndefine('AUTOMATIC_UPDATER_DISABLED', true);\ndefine('DISABLE_WP_CRON', ${config.cron !== 'traffic'});\ndefine('WP_MEMORY_LIMIT', '${memory}');\ndefine('WP_MAX_MEMORY_LIMIT', '${memory}');`,
   };
@@ -174,12 +179,13 @@ export async function startDocker(config, configFile) {
   let state;
   try { state = JSON.parse(await readFile(stateFile, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   assertRuntimeState(state, config, images);
+  assertImportState(state, config);
   state ??= { credentials: { database: randomBytes(24).toString('hex'), root: randomBytes(24).toString('hex'), admin: randomBytes(12).toString('base64url') } };
-  Object.assign(state, { wordpress: config.wordpress, php: config.php, database: databaseConfig(config), images });
+  Object.assign(state, { wordpress: config.wordpress, php: config.php, database: databaseConfig(config), import: config.import, images });
   state.tools = toolLinks(config, siteUrl);
   const root = path.dirname(configFile);
-  const assets = [ ...config.plugins.map(item => ({ item, kind: 'plugin' })), { item: config.theme, kind: 'theme' } ];
-  const mounts = [];
+  const assets = [ ...config.plugins.map(item => ({ item, kind: 'plugin' })), ...(config.importedTheme ? [] : [{ item: config.theme, kind: 'theme' }]) ];
+  const mounts = state.initialized ? [] : await importMounts(config, root, directory, within);
   for (const entry of assets) {
     const { item, kind } = entry;
     let source;
@@ -207,6 +213,8 @@ export async function startDocker(config, configFile) {
   compose(directory, ['exec', '-T', '--user', 'root', 'wordpress', 'chown', '33:33', '/var/www/html/wp-content/mu-plugins']);
   compose(directory, ['run', '--rm', '--quiet-pull', '--no-deps', '--entrypoint', 'sh', 'cli', '/lab/setup.sh']);
   if (config.cron === 'system') compose(directory, ['up', '-d', '--quiet-pull', 'cron']);
+  state.initialized = true;
+  await writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
   console.log(`\nSite:  ${url}\nAdmin: ${url}/wp-admin/\nUser:  admin\nPassword: ${state.credentials.admin}\n\nStop: ./lab down   |   Fresh start: ./lab reset --yes\nUse the same --config/--repo options for lifecycle commands.`);
   printTools(state);
   return { url, directory, credentials: state.credentials };

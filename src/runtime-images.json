@@ -39,7 +39,8 @@
     }
   },
   "plugins": {
-    "redisCache": "3.0.0"
+    "redisCache": "3.0.0",
+    "wordpressImporter": "0.9.6"
   },
   "services": {
     "databaseAdmin": {

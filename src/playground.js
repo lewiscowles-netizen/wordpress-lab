@@ -11,8 +11,13 @@ function resource(item, kind, repository) {
 }
 
 export function blueprint(config, repository) {
-  if (config.database || config.phpOptions || config.cron === 'system' || Object.keys(config.images).length || Object.values(config.services).some(service => service.enabled)) {
-    throw new Error('This recipe needs Docker or Codespaces: Playground uses SQLite and cannot run database images, PHP limits, system cron, or companion services. Remove those fields for a browser lab.');
+  if (config.database || config.phpOptions || config.cron === 'system' || Object.keys(config.images).length || Object.values(config.services).some(service => service.enabled) || config.import?.type === 'sql') {
+    throw new Error('This recipe needs Docker or Codespaces: Playground uses SQLite and cannot run database images, PHP limits, system cron, companion services, or SQL backups. Remove those fields for a browser lab.');
+  }
+  let importUrl = config.import?.url;
+  if (config.import?.path) {
+    if (!repository) throw new Error('Browser XML imports need a public HTTPS URL or repository context. Use Docker for a local file.');
+    importUrl = `https://raw.githubusercontent.com/${repository.url.slice('https://github.com/'.length)}/${encodeURIComponent(repository.ref)}/${[repository.directory, config.import.path].filter(Boolean).join('/').split('/').map(encodeURIComponent).join('/')}`;
   }
   return {
     $schema: 'https://playground.wordpress.net/blueprint-schema.json',
@@ -25,6 +30,7 @@ export function blueprint(config, repository) {
       ...config.plugins.map(item => ({ step: 'installPlugin', pluginData: resource(item, 'plugin', repository), options: { activate: item.activate, ...(item.name ? { targetFolderName: item.name } : {}) } })),
       { step: 'installTheme', themeData: resource(config.theme, 'theme', repository), options: { activate: config.theme.activate, ...(config.theme.name ? { targetFolderName: config.theme.name } : {}) } },
       ...(config.site.language !== 'en_US' ? [{ step: 'setSiteLanguage', language: config.site.language }] : []),
+      ...(importUrl ? [{ step: 'importWxr', file: { resource: 'url', url: importUrl } }] : []),
       { step: 'login', username: 'admin', password: 'password' },
     ],
   };

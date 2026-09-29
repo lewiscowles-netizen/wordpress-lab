@@ -104,6 +104,39 @@ Each service also accepts `true` or `false` for its default settings. They are o
 
 Only the two web UIs bind host ports, on loopback. SQL, SMTP, and Redis ports stay inside the lab network. Codespaces forwards the default UI ports privately; for custom ports, use its Ports panel. `./lab down` stops every service; it does not stop a codespace's billing.
 
+### Import an existing site
+
+For a WordPress XML export (Tools → Export):
+
+```yaml
+import:
+  type: wxr
+  path: backups/site.xml
+  # Or use url: https://example.test/public-export.xml instead of path.
+```
+
+WXR imports content and downloads referenced attachments that remain accessible at the source. It does not include themes, plugins, or their database settings. Docker installs WordPress Importer 0.9.6 as needed. Playground can use a public HTTPS URL or a file in a public recipe repository.
+
+For a **single-site SQL backup** and extracted `wp-content`:
+
+```yaml
+cron: manual
+services:
+  mail: true
+import:
+  type: sql
+  path: backups/site.sql
+  content: backups/wp-content
+  tablePrefix: wp_
+  # sourceUrl: https://original.example (normally detected from the dump)
+```
+
+Use a database/PHP/WordPress combination compatible with the source site. The importer restores the database, copies `plugins`, `themes`, `uploads`, and `languages`, rewrites serialized site URLs for the lab (excluding GUIDs), and applies the lab's generated password to the clone's `admin` account, creating it if absent. Imported theme and site settings are preserved unless the recipe explicitly overrides them. The source files remain read-only. The original `wp-config.php`, mu-plugins, and cache/database drop-ins are not copied; the lab supplies its own runtime configuration.
+
+Imports run once on a fresh lab. To import into a lab that already exists, use another recipe path or explicitly reset after exporting your work. Restarting never repeats a successful import, even when the source file changes. Keep the import settings in the recipe. After successful setup, restarts no longer require the original backup files; restore them before resetting. An interrupted import requires reset before retrying; this avoids silently overwriting partial work.
+
+SQL imports need Docker or Codespaces. Multisite dumps and proprietary backup bundles are not supported; obtain a plain `.sql` dump and extracted content directory. All paths must stay inside the recipe directory; backup content symlinks are rejected. The default `backups/` folder is ignored by Git. Browser imports need public files, so use a local lab for private backups. Mailpit captures `wp_mail()`; plugins using external APIs still need their own sandbox credentials or disabling.
+
 ### Maintaining runtime releases
 
 The internal artifact identities live in [`src/runtime-images.json`](src/runtime-images.json). They pin multi-platform images for Intel and Apple Silicon/Linux ARM. Maintainers can inspect an upstream image with `docker buildx imagetools inspect IMAGE:VERSION`, review the artifact, then add its version to the catalog. Startup never silently resolves a moving tag. Advanced `images` overrides remain available for private container builds and must include a verified digest.
@@ -230,7 +263,7 @@ Stop a codespace when you finish using it; delete it after exporting anything yo
 
 Always repeat the same `--config`, `--repo`, and `--ref` options for lifecycle commands. Lab storage is isolated by the absolute recipe path, not just its display name. Moving a recipe creates a different lab; stop the original first.
 
-`up` reapplies the site title/description and activates configured plugins/theme, but preserves posts, uploads, credentials, and installed plugin files. It doesn't remove plugins omitted from a changed recipe. `activate: false` means “do not activate on setup”; it doesn't deactivate an already active plugin. For a clean recipe, use `reset --yes`. Source files outside `.lab/` survive reset. Changing WordPress or database versions requires reset because core and database files persist in volumes; PHP can change independently without reset; reset after changing a pinned plugin version too. Startup checks the core version against the recipe so a mislabeled image override cannot silently run another WordPress release.
+`up` reapplies configured site settings and activates configured plugins/theme (SQL imports keep settings/theme omitted from the recipe), but preserves posts, uploads, credentials, and installed plugin files. It doesn't remove plugins omitted from a changed recipe. `activate: false` means “do not activate on setup”; it doesn't deactivate an already active plugin. For a clean recipe, use `reset --yes`. Source files outside `.lab/` survive reset. Changing WordPress or database versions requires reset because core and database files persist in volumes; PHP can change independently without reset; reset after changing a pinned plugin version too. Startup checks the core version against the recipe so a mislabeled image override cannot silently run another WordPress release.
 
 If startup fails, fix the reported configuration/network/plugin problem and run `up` again. Use `logs` for details. An occupied port can be changed in YAML. Docker must be running. If your global package-manager settings override the public registry, install dependencies with `npm_config_registry=https://registry.npmjs.org yarn install --registry https://registry.npmjs.org --frozen-lockfile`.
 
@@ -244,6 +277,6 @@ yarn build
 yarn test:integration
 ```
 
-The integration check uses real Docker containers and temporary volumes. It verifies HTTP, admin login, plugin activation, live source edits, persistence across restart, clean reset without losing source files, and compatibility with Playground's current Blueprint schema. It removes its own containers/volumes afterward. It requires Docker and network access; it does not create a paid cloud workspace.
+The integration checks use real Docker containers and temporary volumes. They also verify MySQL, independent PHP changes, PHP limits, Redis persistence, captured email, cron jobs, SQL restores, and WXR imports. They also verify HTTP/admin login, plugins, live source edits, restart persistence, clean reset without losing source files, and compatibility with the checked-in Playground Blueprint schema. Each test removes its own containers/volumes afterward. They require Docker and network access for runtime/plugin downloads; they do not create a paid cloud workspace. Set `WPLAB_LIVE_SCHEMA=1` to also require the current upstream schema endpoint, then review any differences before replacing the fixture.
 
 Implementation references: [WordPress Docker image](https://hub.docker.com/_/wordpress), [WP-CLI](https://developer.wordpress.org/cli/commands/), [Playground Blueprints](https://developer.wordpress.org/playground/blueprints/using-blueprints/), [Codespaces forwarding](https://docs.github.com/en/codespaces/developing-in-a-codespace/forwarding-ports-in-your-codespace).
