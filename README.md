@@ -167,6 +167,8 @@ plugins:
 
 `ref` defaults to `HEAD`. Branches, tags, and commit SHAs are accepted. `name` sets the WordPress folder. Repository contents must already be runnable PHP: the lab does not execute dependency installs or build scripts from downloaded repositories. Use a built ZIP for plugins that need a build.
 
+GitHub is the supported host for recipe `repo` sources. Docker/Codespaces cache the selected checkout and mount it read-only; restarting does not fetch a moving branch again. Changing `ref` selects a new checkout. Tags and branches are upstream-controlled names and may move; a commit fixes the source revision. Playground fetches the public repository when creating a new browser lab.
+
 ```yaml
 plugins:
   - url: https://example.com/releases/my-plugin.zip
@@ -194,6 +196,19 @@ cp examples/local-plugin.yml local.yml
 ./lab up --config local.yml --open
 # Edit plugins/lab-notes/lab-notes.php, then refresh the dashboard.
 ```
+
+### Optional Git Updater integration
+
+[`examples/git-updater.yml`](examples/git-updater.yml) combines a WordPress.org release, a GitHub source checkout, and the built Git Updater 14.4.2 release. Git Updater is opt-in and installed as a regular plugin:
+
+```yaml
+plugins:
+  - url: https://github.com/afragen/git-updater/releases/download/14.4.2/git-updater-14.4.2.zip
+```
+
+After starting the lab, open **Settings → Git Updater → Install Plugin** to install a separate plugin from a supported repository. [Git Updater](https://github.com/afragen/git-updater) includes GitHub support; Bitbucket, GitLab, Gitea, and Gist require its API add-ons. Authenticated requests may require a Git Updater license. Configure credentials inside your private lab, never in a shared recipe. Automatic background WordPress updates remain disabled by the lab; deliberate updates and installations in wp-admin change the site's files.
+
+Git Updater installations are editable WordPress files. Do not use it to replace a recipe's read-only `repo` or `path` mount in Docker/Codespaces; change that recipe source instead. Installations and updates performed in wp-admin do not rewrite `lab.yml`. Record their source and version in the recipe to reproduce them in another clean lab. Versioned upstream ZIPs, including this preset, are not yet integrity-locked by the lab.
 
 ## Browser launcher
 

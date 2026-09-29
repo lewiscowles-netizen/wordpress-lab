@@ -1,0 +1,15 @@
+version: 1
+name: git-plugin-workbench
+plugins:
+  # A specific WordPress.org release.
+  - slug: query-monitor
+    version: "4.0.7"
+  # A source checkout mounted read-only in Docker/Codespaces.
+  - repo: https://github.com/WordPress/hello-dolly
+    ref: 5a6f8b3c1541c6328fa8424da571a6d44a80cdb6
+    name: hello-dolly
+  # A built release for optional installations from inside wp-admin.
+  - url: https://github.com/afragen/git-updater/releases/download/14.4.2/git-updater-14.4.2.zip
+# In WordPress, open Settings > Git Updater > Install Plugin.
+# GitHub works directly; other hosts need Git Updater's API add-ons.
+# Do not use the updater to replace a read-only recipe checkout.
