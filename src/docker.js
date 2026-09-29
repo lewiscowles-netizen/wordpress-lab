@@ -2,8 +2,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, realpath, stat, rm } from 'node:fs/promises';
 import path from 'node:path';
-import { assetUrl } from './config.js';
-import { runtimeImages, assertRuntimeState } from './runtime.js';
+import { assetUrl, DEFAULT_PHP_OPTIONS } from './config.js';
+import { runtimeImages, assertRuntimeState, databaseConfig } from './runtime.js';
 
 export function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -54,6 +54,7 @@ export function setupScript(config, assets) {
     '#!/bin/sh', 'set -eu',
     'wp() { command wp --skip-plugins --skip-themes "$@"; }',
     `[ "$(wp core version)" = ${quote(config.wordpress)} ] || { echo 'WordPress files do not match the requested version. Export your work and reset this lab.' >&2; exit 1; }`,
+    `[ "$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" = ${quote(config.php)} ] || { echo 'PHP does not match the recipe.' >&2; exit 1; }`,
     'if ! wp core is-installed >/dev/null 2>&1; then',
     `  wp core install --url="$LAB_URL" --title=${quote(config.site.title)} --admin_user=admin --admin_password="$LAB_ADMIN_PASSWORD" --admin_email=admin@example.test --skip-email`,
     'fi',
@@ -61,6 +62,10 @@ export function setupScript(config, assets) {
     `wp option update blogname ${quote(config.site.title)}`,
     `wp option update blogdescription ${quote(config.site.description)}`,
     'wp option update blog_public 0',
+    `wp option update timezone_string ${quote(config.site.timezone)}`,
+    ...(config.site.language !== 'en_US' ? [`wp language core install ${quote(config.site.language)}`] : []),
+    `wp site switch-language ${quote(config.site.language)}`,
+    `wp rewrite structure ${quote(config.site.permalink)} --hard`,
   ];
   for (const { item, kind, mounted } of assets) {
     const name = item.name ?? item.slug;
@@ -82,6 +87,14 @@ export function setupScript(config, assets) {
   return lines.join('\n');
 }
 
+export function phpIni(config) {
+  const options = config.phpOptions ?? DEFAULT_PHP_OPTIONS;
+  return ['opcache.validate_timestamps=1', 'opcache.revalidate_freq=0',
+    `memory_limit=${options.memoryLimit}`, `upload_max_filesize=${options.uploadMaxFilesize}`,
+    `post_max_size=${options.postMaxSize}`, `max_execution_time=${options.maxExecutionTime}`,
+    `max_input_vars=${options.maxInputVars}`, ''].join('\n');
+}
+
 // Compose interpolates dollar signs even in JSON input. All recipe strings are literal.
 export function escapeCompose(value) {
   if (typeof value === 'string') return value.replaceAll('$', () => '$$');
@@ -91,25 +104,30 @@ export function escapeCompose(value) {
 }
 
 export function composeConfig(config, { project, directory, credentials, mounts, url }) {
-  const volumes = ['wordpress:/var/www/html', ...mounts];
+  const volumes = ['wordpress:/var/www/html', ...mounts, { type: 'bind', source: path.join(directory, 'development.ini'), target: '/usr/local/etc/php/conf.d/zz-lab.ini', read_only: true }];
+  const database = databaseConfig(config);
+  const dbPrefix = database.engine === 'mysql' ? 'MYSQL' : 'MARIADB';
+  const memory = (config.phpOptions ?? DEFAULT_PHP_OPTIONS).memoryLimit;
   const environment = {
     WORDPRESS_DB_HOST: 'database', WORDPRESS_DB_NAME: 'wordpress', WORDPRESS_DB_USER: 'wordpress', WORDPRESS_DB_PASSWORD: credentials.database,
-    WORDPRESS_DEBUG: '1',
-    WORDPRESS_CONFIG_EXTRA: "define('WP_ENVIRONMENT_TYPE', 'local');\ndefine('WP_DEBUG_LOG', true);\ndefine('WP_DEBUG_DISPLAY', false);\ndefine('AUTOMATIC_UPDATER_DISABLED', true);",
+    WORDPRESS_DEBUG: config.debug ? '1' : '0',
+    WORDPRESS_CONFIG_EXTRA: `define('WP_ENVIRONMENT_TYPE', 'local');\ndefine('WP_DEBUG_LOG', ${config.debug});\ndefine('WP_DEBUG_DISPLAY', false);\ndefine('AUTOMATIC_UPDATER_DISABLED', true);\ndefine('DISABLE_WP_CRON', ${config.cron !== 'traffic'});\ndefine('WP_MEMORY_LIMIT', '${memory}');\ndefine('WP_MAX_MEMORY_LIMIT', '${memory}');`,
   };
   const images = runtimeImages(config);
-  return escapeCompose({
+  const result = {
     name: project,
     services: {
       database: {
         image: images.database,
-        environment: { MARIADB_DATABASE: 'wordpress', MARIADB_USER: 'wordpress', MARIADB_PASSWORD: credentials.database, MARIADB_ROOT_PASSWORD: credentials.root },
+        environment: { [`${dbPrefix}_DATABASE`]: 'wordpress', [`${dbPrefix}_USER`]: 'wordpress', [`${dbPrefix}_PASSWORD`]: credentials.database, [`${dbPrefix}_ROOT_PASSWORD`]: credentials.root },
         volumes: ['database:/var/lib/mysql'],
-        healthcheck: { test: ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized'], interval: '2s', timeout: '5s', retries: 60, start_period: '10s' },
+        healthcheck: { test: database.engine === 'mysql'
+          ? ['CMD-SHELL', 'MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=TCP -h127.0.0.1 -uwordpress wordpress -e "SELECT 1" >/dev/null']
+          : ['CMD', 'healthcheck.sh', '--connect', '--innodb_initialized'], interval: '2s', timeout: '5s', retries: 90, start_period: '10s' },
       },
       wordpress: {
         image: images.wordpress, environment,
-        volumes: [...volumes, { type: 'bind', source: path.join(directory, 'development.ini'), target: '/usr/local/etc/php/conf.d/zz-lab.ini', read_only: true }],
+        volumes,
         ports: [`127.0.0.1:${config.port}:80`],
         depends_on: { database: { condition: 'service_healthy' } },
         healthcheck: { test: ['CMD', 'php', '-r', "exit(is_file('/var/www/html/wp-config.php') && @fsockopen('127.0.0.1', 80) ? 0 : 1);"], interval: '2s', timeout: '5s', retries: 60 },
@@ -121,7 +139,14 @@ export function composeConfig(config, { project, directory, credentials, mounts,
       },
     },
     volumes: { wordpress: {}, database: {} },
-  });
+  };
+  if (config.cron === 'system') {
+    const { profiles, ...cli } = result.services.cli;
+    result.services.cron = { ...cli, entrypoint: ['sh', '-c'],
+      command: ['while true; do if wp core is-installed >/dev/null 2>&1; then wp cron event run --due-now; fi; sleep 60; done'],
+      depends_on: { wordpress: { condition: 'service_healthy' } } };
+  }
+  return escapeCompose(result);
 }
 
 export function labLocation(configFile) {
@@ -144,7 +169,8 @@ export async function startDocker(config, configFile) {
   let state;
   try { state = JSON.parse(await readFile(stateFile, 'utf8')); } catch (error) { if (error.code !== 'ENOENT') throw error; }
   assertRuntimeState(state, config, images);
-  state ??= { wordpress: config.wordpress, php: config.php, images, credentials: { database: randomBytes(24).toString('hex'), root: randomBytes(24).toString('hex'), admin: randomBytes(12).toString('base64url') } };
+  state ??= { credentials: { database: randomBytes(24).toString('hex'), root: randomBytes(24).toString('hex'), admin: randomBytes(12).toString('base64url') } };
+  Object.assign(state, { wordpress: config.wordpress, php: config.php, database: databaseConfig(config), images });
   const root = path.dirname(configFile);
   const assets = [ ...config.plugins.map(item => ({ item, kind: 'plugin' })), { item: config.theme, kind: 'theme' } ];
   const mounts = [];
@@ -165,11 +191,12 @@ export async function startDocker(config, configFile) {
   const url = siteUrl(config);
   await writeFile(stateFile, JSON.stringify(state, null, 2), { mode: 0o600 });
   await writeFile(path.join(directory, 'setup.sh'), setupScript(config, assets), { mode: 0o644 });
-  await writeFile(path.join(directory, 'development.ini'), 'opcache.validate_timestamps=1\nopcache.revalidate_freq=0\n', { mode: 0o644 });
+  await writeFile(path.join(directory, 'development.ini'), phpIni(config), { mode: 0o644 });
   await writeFile(path.join(directory, 'compose.json'), JSON.stringify(composeConfig(config, { ...location, credentials: state.credentials, mounts, url }), null, 2), { mode: 0o600 });
-  console.log(`Starting ${config.name}. First boot downloads WordPress and MariaDB images.`);
-  compose(directory, ['up', '-d', '--quiet-pull', '--wait', '--wait-timeout', '180', 'database', 'wordpress']);
+  console.log(`Starting ${config.name}: WordPress ${config.wordpress}, PHP ${config.php}, ${state.database.engine} ${state.database.version}.`);
+  compose(directory, ['up', '-d', '--quiet-pull', '--wait', '--wait-timeout', '240', '--remove-orphans', 'database', 'wordpress']);
   compose(directory, ['run', '--rm', '--quiet-pull', '--no-deps', '--entrypoint', 'sh', 'cli', '/lab/setup.sh']);
+  if (config.cron === 'system') compose(directory, ['up', '-d', '--quiet-pull', 'cron']);
   console.log(`\nSite:  ${url}\nAdmin: ${url}/wp-admin/\nUser:  admin\nPassword: ${state.credentials.admin}\n\nStop: ./lab down   |   Fresh start: ./lab reset --yes\nUse the same --config/--repo options for lifecycle commands.`);
   return { url, directory, credentials: state.credentials };
 }

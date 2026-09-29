@@ -32,6 +32,12 @@ for (const [name, text] of [
   ['invalid schema version', 'version: 2'],
   ['unquoted PHP version', 'version: 1\nphp: 8.3'],
   ['bad port', 'version: 1\nport: 80'],
+  ['unknown database', 'version: 1\ndatabase: {engine: postgres}'],
+  ['floating database release', 'version: 1\ndatabase: {engine: mysql, version: "8.4"}'],
+  ['invalid PHP limit', 'version: 1\nphpOptions: {memoryLimit: "256M; evil"}'],
+  ['upload larger than request', 'version: 1\nphpOptions: {uploadMaxFilesize: "128M", postMaxSize: "64M"}'],
+  ['unknown timezone', 'version: 1\nsite: {timezone: Moon/Base}'],
+  ['invalid cron mode', 'version: 1\ncron: weekly'],
   ['empty slug', 'version: 1\nplugins: [{slug: ""}]'],
   ['duplicate plugins', 'version: 1\nplugins: [hello-dolly, hello-dolly]'],
   ['two sources', 'version: 1\nplugins: [{slug: test, url: https://example.com/test.zip}]'],
@@ -44,6 +50,18 @@ for (const [name, text] of [
   ['missing mount name', 'version: 1\nplugins: [{path: plugins/test}]'],
   ['invalid source version', 'version: 1\nplugins: [{url: https://example.com/a.zip, version: "1.0"}]'],
 ]) test(`rejects ${name}`, () => assert.throws(() => parseConfig(text)));
+
+test('Playground applies shared site settings and rejects unsupported server settings', () => {
+  const result = blueprint(parseConfig('version: 1\nphp: "8.4"\ndebug: false\ncron: manual\nsite: {timezone: Europe/London, language: en_GB, permalink: /%postname%/}'));
+  assert.equal(result.preferredVersions.php, '8.4');
+  assert.equal(result.constants.WP_DEBUG, false);
+  assert.equal(result.constants.DISABLE_WP_CRON, true);
+  assert.equal(result.siteOptions.timezone_string, 'Europe/London');
+  assert.equal(result.steps.at(-2).language, 'en_GB');
+  for (const field of ['database: {engine: mysql}', 'phpOptions: {memoryLimit: "512M"}', 'cron: system']) {
+    assert.throws(() => blueprint(parseConfig(`version: 1\n${field}`)), /needs Docker or Codespaces/);
+  }
+});
 
 test('pinned versions and inactive plugins are preserved in browser labs', () => {
   const result = blueprint(parseConfig('version: 1\nplugins: [{slug: query-monitor, version: "3.17.2", activate: false}]'));

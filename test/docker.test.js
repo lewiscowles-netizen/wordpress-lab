@@ -43,6 +43,25 @@ test('changing even a same-version digest requires a deliberate reset', () => {
   assert.throws(() => assertRuntimeState({ ...state, images: undefined }, config, images), /predates image pins/);
 });
 
+test('PHP changes preserve data while changing database engine requires reset', () => {
+  const config = parseConfig('version: 1');
+  const state = { wordpress: config.wordpress, php: config.php, images: runtimeImages(config) };
+  const switched = parseConfig('version: 1\nphp: "8.4"');
+  assert.doesNotThrow(() => assertRuntimeState(state, switched, runtimeImages(switched)));
+  const mysql = parseConfig('version: 1\ndatabase: {engine: mysql, version: "8.4.11"}');
+  assert.throws(() => assertRuntimeState(state, mysql, runtimeImages(mysql)), /reset/);
+});
+
+test('MySQL uses its own initialization and authenticated TCP readiness query', () => {
+  const config = parseConfig('version: 1\ndatabase: {engine: mysql, version: "8.4.11"}\ncron: system');
+  const result = composeConfig(config, { project: 'test', directory: '/tmp/lab', credentials: { admin: 'a', database: 'b', root: 'c' }, mounts: [], url: 'http://localhost:8080' });
+  assert.equal(result.services.database.environment.MYSQL_PASSWORD, 'b');
+  assert.equal(result.services.database.environment.MARIADB_PASSWORD, undefined);
+  assert.match(result.services.database.healthcheck.test[1], /\$\$MYSQL_PASSWORD.*--protocol=TCP/);
+  assert.equal(result.services.cron.profiles, undefined);
+  assert.match(result.services.cron.command[0], /--due-now/);
+});
+
 test('shell and Compose escaping keep recipe text literal', () => {
   assert.equal(quote("a'b $(touch /tmp/no)"), "'a'\\''b $(touch /tmp/no)'");
   const result = composeConfig(parseConfig('version: 1'), { project: 'test', directory: '/tmp/$lab', credentials: { admin: '$PASSWORD', database: 'b', root: 'c' }, mounts: [], url: 'http://localhost:8080' });

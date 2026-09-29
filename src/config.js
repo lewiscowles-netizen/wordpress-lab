@@ -1,5 +1,5 @@
 import { parseDocument } from 'yaml';
-import { DEFAULT_WORDPRESS, DEFAULT_PHP, validateImageReference } from './runtime.js';
+import { DEFAULT_WORDPRESS, DEFAULT_PHP, DEFAULT_DATABASE, validateImageReference } from './runtime.js';
 
 export const DEFAULT_RECIPE = `version: 1
 name: my-first-lab
@@ -30,6 +30,23 @@ function string(value, label, pattern) {
   }
   if (pattern && !pattern.test(value)) throw new Error(`Invalid ${label}: ${value}`);
   return value;
+}
+
+function integer(value, label, min, max) {
+  if (!Number.isInteger(value) || value < min || value > max) throw new Error(`${label} must be an integer between ${min} and ${max}.`);
+  return value;
+}
+
+export const DEFAULT_PHP_OPTIONS = { memoryLimit: '256M', uploadMaxFilesize: '64M', postMaxSize: '64M', maxExecutionTime: 120, maxInputVars: 3000 };
+
+function phpOptions(value) {
+  object(value, 'phpOptions', Object.keys(DEFAULT_PHP_OPTIONS));
+  const result = { ...DEFAULT_PHP_OPTIONS, ...value };
+  for (const key of ['memoryLimit', 'uploadMaxFilesize', 'postMaxSize']) string(result[key], `phpOptions.${key}`, /^[1-9]\d{0,4}M$/);
+  if (parseInt(result.postMaxSize) < parseInt(result.uploadMaxFilesize)) throw new Error('phpOptions.postMaxSize must be at least uploadMaxFilesize.');
+  integer(result.maxExecutionTime, 'phpOptions.maxExecutionTime', 1, 3600);
+  integer(result.maxInputVars, 'phpOptions.maxInputVars', 100, 100000);
+  return result;
 }
 
 export function httpsUrl(value, label = 'URL') {
@@ -86,26 +103,40 @@ export function parseConfig(text) {
   if (document.errors.length) throw new Error(`Invalid YAML: ${document.errors[0].message}`);
   if (document.warnings.length) throw new Error(`Invalid YAML: ${document.warnings[0].message}`);
   const raw = document.toJS({ maxAliasCount: 0 });
-  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'port', 'site', 'plugins', 'theme', 'images']);
+  object(raw, 'recipe', ['version', 'name', 'wordpress', 'php', 'phpOptions', 'database', 'debug', 'cron', 'port', 'site', 'plugins', 'theme', 'images']);
   if (raw.version !== 1) throw new Error('recipe.version must be 1.');
   const name = string(raw.name ?? 'wordpress-lab', 'name', /^[a-z][a-z0-9-]{0,39}$/);
-  if (raw.wordpress === 'latest') throw new Error('wordpress: latest is mutable. Choose a full release such as "7.1.2"; Docker also requires a pinned image digest.');
+  if (raw.wordpress === 'latest') throw new Error('wordpress: latest is mutable. Choose a full release such as "7.1.2".');
   const wordpress = string(raw.wordpress ?? DEFAULT_WORDPRESS, 'wordpress', /^\d+\.\d+\.\d+$/);
   const php = string(raw.php ?? DEFAULT_PHP, 'php', /^8\.[2345]$/);
+  let database;
+  if (raw.database !== undefined) {
+    object(raw.database, 'database', ['engine', 'version']);
+    const engine = string(raw.database.engine, 'database.engine', /^(mysql|mariadb)$/);
+    database = { engine, version: string(raw.database.version ?? DEFAULT_DATABASE[engine], 'database.version', /^\d+\.\d+\.\d+$/) };
+  }
+  const debug = raw.debug ?? true;
+  if (typeof debug !== 'boolean') throw new Error('debug must be true or false.');
+  const cron = string(raw.cron ?? 'traffic', 'cron', /^(traffic|manual|system)$/);
   const images = raw.images ?? {};
   object(images, 'images', ['wordpress', 'cli', 'database']);
   for (const [key, value] of Object.entries(images)) validateImageReference(value, `images.${key}`);
   const port = raw.port ?? 8080;
   if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('port must be an integer between 1024 and 65535.');
   const site = raw.site ?? {};
-  object(site, 'site', ['title', 'description']);
+  object(site, 'site', ['title', 'description', 'language', 'timezone', 'permalink']);
   const title = string(site.title ?? 'My WordPress Lab', 'site.title');
   const description = string(site.description ?? 'A little room for big ideas.', 'site.description');
+  const language = string(site.language ?? 'en_US', 'site.language', /^[a-z]{2,3}(?:_[A-Za-z0-9]+){0,2}$/);
+  const timezone = string(site.timezone ?? 'UTC', 'site.timezone');
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }); } catch { throw new Error('site.timezone must be an IANA timezone, such as Europe/London.'); }
+  const permalink = site.permalink ?? '';
+  if (permalink !== '') string(permalink, 'site.permalink', /^\/[A-Za-z0-9%_\/-]*\/$/);
   if (raw.plugins !== undefined && (!Array.isArray(raw.plugins) || raw.plugins.length > 30)) throw new Error('plugins must be a list of at most 30 plugins.');
   const plugins = (raw.plugins ?? []).map((item, index) => asset(item, `plugins[${index}]`));
   const names = plugins.map(item => item.name ?? item.slug ?? item.url);
   if (new Set(names).size !== names.length) throw new Error('Plugin names must be unique.');
-  return { version: 1, name, wordpress, php, port, images, site: { title, description }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
+  return { version: 1, name, wordpress, php, database, phpOptions: raw.phpOptions === undefined ? undefined : phpOptions(raw.phpOptions), debug, cron, port, images, site: { title, description, language, timezone, permalink }, plugins, theme: asset(raw.theme ?? { slug: 'twentytwentyfive', version: '1.5' }, 'theme') };
 }
 
 export function assetUrl(item, kind) {

@@ -5,7 +5,7 @@ A disposable WordPress development environment described by one small YAML file.
 | Workspace | Start | Best for | Cost and storage |
 | --- | --- | --- | --- |
 | Browser | Click **Launch browser lab** in the launcher, or `./lab playground --open` | Fast experiments and shareable starting points | WordPress Playground; no hosting bill. Save/export through Playground to keep changes. |
-| Local | `./lab up --open` | Real MariaDB, local source files, and your editor | Uses your machine. Docker volumes persist until reset. |
+| Local | `./lab up --open` | Real MySQL or MariaDB, local source files, and your editor | Uses your machine. Docker volumes persist until reset. |
 | Codespaces | Open a repository containing this template in GitHub Codespaces | A ready-to-code remote workspace | Subject to your GitHub allowance/billing. Stop/delete codespaces when finished. |
 
 ## Start locally
@@ -18,7 +18,7 @@ From this directory:
 ./lab up --open
 ```
 
-The launcher installs its locked dependencies on first use, starts WordPress and MariaDB, installs the recipe's plugins/theme, and prints the site URL and generated administrator password. The first boot downloads container images; subsequent boots reuse them. WordPress is at **http://localhost:8080** by default.
+The launcher installs its locked dependencies on first use, starts WordPress and the selected database, installs the recipe's plugins/theme, and prints the site URL and generated administrator password. The first boot downloads container images; subsequent boots reuse them. WordPress is at **http://localhost:8080** by default.
 
 Commands from any directory are supported: use `/path/to/wordpress-lab/lab up --config /path/to/lab.yml`. Recipes are resolved relative to your current directory; source paths are relative to the recipe file. Alternatively use `node /path/to/wordpress-lab/src/cli.js` after installing dependencies.
 
@@ -47,41 +47,51 @@ Only `version: 1` is required. Omitted settings use sensible defaults; an omitte
 - `wordpress`: a full quoted release such as `"7.1.2"` (the default). `latest` and partial versions are rejected. Docker requires a matching digest in the bundled image catalog or an explicit `images.wordpress` override. Playground must support the requested release.
 - `php`: quoted `"8.2"`, `"8.3"`, `"8.4"`, or `"8.5"`; defaults to `"8.3"`.
 - `port`: local port, from 1024 to 65535; defaults to 8080. Use a different port for each concurrent lab.
-- `site`: optional `title` and `description`.
+- `database`: `engine: mysql` or `engine: mariadb`, with a quoted full `version`. Omit it for MariaDB 11.4.13 in Docker or SQLite in Playground.
+- `phpOptions`: memory, upload/request size, execution time, and input variable limits (Docker/Codespaces).
+- `debug`: `true` by default; `false` disables WordPress debug logging.
+- `cron`: `traffic` (WordPress default), `manual` (run due jobs with WP-CLI), or `system` (a Docker worker checks every 60 seconds).
+- `site`: optional `title`, `description`, `language` (default `en_US`), IANA `timezone` (default `UTC`), and `permalink` (default empty/plain).
 - `plugins`: at most 30 plugin sources.
 - `theme`: one theme source; defaults to `twentytwentyfive`.
-- `images`: optional Docker image overrides for `wordpress`, `cli`, and `database`. Each reference must end in `@sha256:` followed by a full 64-character digest. These overrides do not affect Playground.
+- `images`: optional Docker image overrides for `wordpress`, `cli`, and `database`. Each reference must end in `@sha256:` followed by a full 64-character digest. Playground rejects image overrides because it cannot apply them.
 
-Every lab enables development mode, debug logging, and search-engine discouragement. Docker logs go to `wp-content/debug.log` in the WordPress volume; PHP notices are not displayed to visitors.
+Every lab enables development mode and search-engine discouragement. Debug logging is on by default. Docker logs go to `wp-content/debug.log` in the WordPress volume; PHP notices are not displayed to visitors.
 
-### Immutable container artifacts
-
-Every generated Docker service uses a checked-in image digest from [`src/runtime-images.json`](src/runtime-images.json). The catalog currently covers WordPress 7.1.2 with PHP 8.2–8.5, WP-CLI 2.12.0, and MariaDB 11.4. Tags remain in the references as readable labels; Docker selects the content by its SHA-256 digest. Rebuilding or moving the upstream tag cannot change an existing pin. The catalog uses multi-platform index digests, selecting a fixed platform image for your architecture; different architectures naturally run different binaries.
-
-For example, the default WordPress image is:
-
-```text
-wordpress:7.1.2-php8.3-apache@sha256:bb209c8ab111746f22f578b870d866eb3f3da6028998a608202b706675450ecd
-```
-
-To adopt a new release, explicitly resolve its registry digest, review it, and commit the new catalog entry or recipe override. Docker Buildx can inspect an image without downloading its filesystem:
-
-```sh
-docker buildx imagetools inspect wordpress:7.1.2-php8.3-apache
-```
-
-Copy the top-level `Digest` from the inspected image (not a guessed hash). Example override for the existing default:
+### Select the server stack
 
 ```yaml
-wordpress: "7.1.2"
-php: "8.3"
-images:
-  wordpress: wordpress:7.1.2-php8.3-apache@sha256:bb209c8ab111746f22f578b870d866eb3f3da6028998a608202b706675450ecd
+php: "8.4"
+database:
+  engine: mysql
+  version: "8.4.11"
+phpOptions:
+  memoryLimit: "512M"
+  uploadMaxFilesize: "128M"
+  postMaxSize: "128M"
+  maxExecutionTime: 120
+  maxInputVars: 3000
+debug: true
+cron: system
+site:
+  timezone: Europe/London
+  language: en_GB
+  permalink: /%postname%/
 ```
 
-Startup never resolves moving tags. Unknown combinations fail with instructions to supply a pin. The lab records its image references; changes to any runtime digest require an explicit reset, including a rebuilt image carrying the same version label. Labs created before digest pinning also require reset before adopting this configuration. Export existing work first; reset deletes that lab's data. No existing lab is automatically reset.
+PHP is selected independently from WordPress and the database. The bundled catalog includes PHP 8.2–8.5, MySQL 8.4.11/9.7.2, and MariaDB 10.11.19/11.4.13/11.8.9. Configuration uses readable version names; the checked-in catalog maps those names to fixed container artifacts. Ordinary recipes do not need hashes. A new catalog release must add new artifact identities rather than silently repointing an existing release.
 
-The boundary is **immutable container artifacts**, not a completely immutable experiment. Plugins/themes downloaded by version still use URLs without content-hash verification. Local sources and WordPress data remain editable. Hosted Playground does not accept our Docker pins and its runtime can change. The Codespaces base image is pinned, but dev-container features and their installation downloads are not fully locked. A fully reproducible environment would also need verified plugin/theme archives, fixed Git commits, and a pinned or self-hosted Playground runtime.
+Changing only PHP preserves the site's files, database, and credentials. Changing WordPress, the database engine/version, or a database artifact requires an explicit reset; no data migration is attempted. Export anything you need first. Changes to PHP limits, debug settings, cron, and site settings take effect with `./lab up`.
+
+The default PHP limits are 256M memory, 64M upload and POST size, 120 seconds, and 3,000 input variables. Sizes use whole megabytes (`M`); POST size must be at least upload size. `cron: manual` disables traffic-triggered cron; run due events with `./lab wp -- cron event run --due-now`. `cron: system` runs the same command every minute while the lab is running.
+
+Playground supports PHP, debug, language, timezone, permalinks, and traffic/manual cron. It uses SQLite and cannot reproduce MySQL/MariaDB, custom PHP limits, or a system cron worker. Recipes requesting those features fail clearly in browser mode; use Docker or Codespaces.
+
+### Maintaining runtime releases
+
+The internal artifact identities live in [`src/runtime-images.json`](src/runtime-images.json). They pin multi-platform images for Intel and Apple Silicon/Linux ARM. Maintainers can inspect an upstream image with `docker buildx imagetools inspect IMAGE:VERSION`, review the artifact, then add its version to the catalog. Startup never silently resolves a moving tag. Advanced `images` overrides remain available for private container builds and must include a verified digest.
+
+These pins cover container artifacts. Versioned plugin/theme downloads are not yet integrity-locked, local files and WordPress data remain editable, and hosted Playground supplies its own runtime. Codespaces' base image is pinned; dev-container features and installation downloads are not fully locked. The project does not yet publish its own registry-enforced immutable releases.
 
 ### Plugin and theme sources
 
@@ -203,11 +213,11 @@ Stop a codespace when you finish using it; delete it after exporting anything yo
 
 Always repeat the same `--config`, `--repo`, and `--ref` options for lifecycle commands. Lab storage is isolated by the absolute recipe path, not just its display name. Moving a recipe creates a different lab; stop the original first.
 
-`up` reapplies the site title/description and activates configured plugins/theme, but preserves posts, uploads, credentials, and installed plugin files. It doesn't remove plugins omitted from a changed recipe. `activate: false` means “do not activate on setup”; it doesn't deactivate an already active plugin. For a clean recipe, use `reset --yes`. Source files outside `.lab/` survive reset. Changing WordPress/PHP versions or any runtime image digest requires reset because core and database files persist in volumes; reset after changing a pinned plugin version too. Startup checks the core version against the recipe so a mislabeled image override cannot silently run another WordPress release.
+`up` reapplies the site title/description and activates configured plugins/theme, but preserves posts, uploads, credentials, and installed plugin files. It doesn't remove plugins omitted from a changed recipe. `activate: false` means “do not activate on setup”; it doesn't deactivate an already active plugin. For a clean recipe, use `reset --yes`. Source files outside `.lab/` survive reset. Changing WordPress or database versions requires reset because core and database files persist in volumes; PHP can change independently without reset; reset after changing a pinned plugin version too. Startup checks the core version against the recipe so a mislabeled image override cannot silently run another WordPress release.
 
 If startup fails, fix the reported configuration/network/plugin problem and run `up` again. Use `logs` for details. An occupied port can be changed in YAML. Docker must be running. If your global package-manager settings override the public registry, install dependencies with `npm_config_registry=https://registry.npmjs.org yarn install --registry https://registry.npmjs.org --frozen-lockfile`.
 
-This is a development lab. Docker binds HTTP to loopback and exposes no database port; administrator/database passwords are generated per lab and kept in ignored `.lab/` files. Run only trusted PHP/plugins/recipes. The browser uses SQLite through Playground, while Docker/Codespaces use MariaDB: database-specific SQL, native PHP extensions, cron, email delivery, and networking can behave differently. Use Docker when those details matter.
+This is a development lab. Docker binds HTTP to loopback and exposes no database port; administrator/database passwords are generated per lab and kept in ignored `.lab/` files. Run only trusted PHP/plugins/recipes. The browser uses SQLite through Playground, while Docker/Codespaces use the selected MySQL or MariaDB: database-specific SQL, native PHP extensions, cron, email delivery, and networking can behave differently. Use Docker when those details matter.
 
 ## Development checks
 

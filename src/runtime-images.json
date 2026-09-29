@@ -2,7 +2,11 @@
   "schemaVersion": 1,
   "defaults": {
     "wordpress": "7.1.2",
-    "php": "8.3"
+    "php": "8.3",
+    "database": {
+      "mariadb": "11.4.13",
+      "mysql": "8.4.11"
+    }
   },
   "wordpress": {
     "7.1.2": {
@@ -18,5 +22,15 @@
     "8.4": "wordpress:cli-2.12.0-php8.4@sha256:9c334ac196aedf314f8384f65333440447baf755941822864397602cef4601b9",
     "8.5": "wordpress:cli-2.12.0-php8.5@sha256:3727f380ef4467176d3bb756010e57f3460107361e13663f34a18c95a2d35c8d"
   },
-  "database": "mariadb:11.4@sha256:70cc072b29b4a89ae07abb2d4da2c64678a7f2dfe092751bb51c87d67dc1338b"
+  "database": {
+    "mariadb": {
+      "11.4.13": "mariadb:11.4.13@sha256:70cc072b29b4a89ae07abb2d4da2c64678a7f2dfe092751bb51c87d67dc1338b",
+      "10.11.19": "mariadb:10.11.19@sha256:7f22313fc130a377a44999965bcb0a08dd5b21e8502824c1b864f792f9bc66ab",
+      "11.8.9": "mariadb:11.8.9@sha256:79d59758afc91b89b120b0a8904d637f5a3b3e1c4900f29b740d6d46c72fef68"
+    },
+    "mysql": {
+      "8.4.11": "mysql:8.4.11@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d",
+      "9.7.2": "mysql:9.7.2@sha256:30a0abfa7b502a496e12339b54cd07aaa70363396dc4b8e8a72a92804a505cd6"
+    }
+  }
 }
